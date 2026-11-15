@@ -1,4 +1,4 @@
-/** Durable size, position and maximized state for the one DSH Desktop Beta main window. */
+﻿/** Durable size, position and maximized state for the one Travel Buddy main window. */
 import { join } from 'node:path'
 import { atomicJson, readPrivateFile } from './private-files.ts'
 

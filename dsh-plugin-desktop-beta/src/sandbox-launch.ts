@@ -77,8 +77,8 @@ export function sandboxLaunchDialog(context: SandboxLaunchContext): SandboxLaunc
   const keptByArgument = context.argv.includes(KEEP_ELEVATED_ARGUMENT)
   const cause: string[] = []
   if (elevation?.elevated && elevation.type === 'full') {
-    cause.push(t('DSH Desktop Beta 当前以管理员身份运行。以管理员身份运行时，Chromium 沙箱在部分 Windows 环境下无法创建子进程。',
-      'DSH Desktop Beta is running as administrator. On some Windows systems the Chromium sandbox cannot create child processes from an administrator process.'))
+    cause.push(t('Travel Buddy 当前以管理员身份运行。以管理员身份运行时，Chromium 沙箱在部分 Windows 环境下无法创建子进程。',
+      'Travel Buddy is running as administrator. On some Windows systems the Chromium sandbox cannot create child processes from an administrator process.'))
     if (keptByArgument) {
       cause.push(t(`启动参数中有 ${KEEP_ELEVATED_ARGUMENT}，因此没有自动以普通权限重新启动。`,
         `The ${KEEP_ELEVATED_ARGUMENT} argument turned off the automatic restart without administrator rights.`))
@@ -97,14 +97,14 @@ export function sandboxLaunchDialog(context: SandboxLaunchContext): SandboxLaunc
         '• Do not start it from an administrator terminal or from a scheduled task set to “Run with highest privileges”.'))
     if (keptByArgument) cause.push(t(`• 去掉启动参数 ${KEEP_ELEVATED_ARGUMENT}。`, `• Remove the ${KEEP_ELEVATED_ARGUMENT} argument.`))
   } else if (elevation?.elevated) {
-    cause.push(t('DSH Desktop Beta 当前带管理员权限运行：这个账户启动的所有程序都带管理员权限（UAC 已关闭，或正在使用内置 Administrator 账户），因此无法自动以普通权限重新启动。以管理员身份运行时，Chromium 沙箱在部分 Windows 环境下无法创建子进程。请开启 UAC，或用普通账户登录后再启动。',
-      'DSH Desktop Beta is running with administrator rights because every program this account starts has them (UAC is off, or this is the built-in Administrator account), so it cannot restart itself without them. On some Windows systems the Chromium sandbox cannot create child processes from an administrator process. Turn UAC on, or sign in with a standard account, and start it again.'))
+    cause.push(t('Travel Buddy 当前带管理员权限运行：这个账户启动的所有程序都带管理员权限（UAC 已关闭，或正在使用内置 Administrator 账户），因此无法自动以普通权限重新启动。以管理员身份运行时，Chromium 沙箱在部分 Windows 环境下无法创建子进程。请开启 UAC，或用普通账户登录后再启动。',
+      'Travel Buddy is running with administrator rights because every program this account starts has them (UAC is off, or this is the built-in Administrator account), so it cannot restart itself without them. On some Windows systems the Chromium sandbox cannot create child processes from an administrator process. Turn UAC on, or sign in with a standard account, and start it again.'))
   } else if (elevation) {
-    cause.push(t('DSH Desktop Beta 没有以管理员身份运行。其他已知原因：AppLocker 或软件限制策略、安全软件拦截、程序位于网络共享或重定向的文件夹中。',
-      'DSH Desktop Beta is not running as administrator. Other known causes are AppLocker or Software Restriction Policies, security software blocking the launch, and a program folder on a network share or in a redirected folder.'))
+    cause.push(t('Travel Buddy 没有以管理员身份运行。其他已知原因：AppLocker 或软件限制策略、安全软件拦截、程序位于网络共享或重定向的文件夹中。',
+      'Travel Buddy is not running as administrator. Other known causes are AppLocker or Software Restriction Policies, security software blocking the launch, and a program folder on a network share or in a redirected folder.'))
   } else {
-    cause.push(t('无法确认 DSH Desktop Beta 是否以管理员身份运行。已知原因：以管理员身份运行（包括兼容性设置里的「以管理员身份运行此程序」）、AppLocker 或软件限制策略、安全软件拦截、程序位于网络共享或重定向的文件夹中。',
-      'Could not check whether DSH Desktop Beta runs as administrator. Known causes are running as administrator (including the compatibility setting “Run this program as an administrator”), AppLocker or Software Restriction Policies, security software blocking the launch, and a program folder on a network share or in a redirected folder.'))
+    cause.push(t('无法确认 Travel Buddy 是否以管理员身份运行。已知原因：以管理员身份运行（包括兼容性设置里的「以管理员身份运行此程序」）、AppLocker 或软件限制策略、安全软件拦截、程序位于网络共享或重定向的文件夹中。',
+      'Could not check whether Travel Buddy runs as administrator. Known causes are running as administrator (including the compatibility setting “Run this program as an administrator”), AppLocker or Software Restriction Policies, security software blocking the launch, and a program folder on a network share or in a redirected folder.'))
   }
   const code = failure.code === SBOX_ERROR_CREATE_PROCESS
     ? t(`错误码：${failure.code}（SBOX_ERROR_CREATE_PROCESS，Windows 拒绝创建沙箱进程）`,
@@ -113,10 +113,10 @@ export function sandboxLaunchDialog(context: SandboxLaunchContext): SandboxLaunc
   const workaround = t('临时绕过：在快捷方式「目标」末尾加上 --no-sandbox 后启动。代价：这会关闭 Chromium 对所有页面的沙箱隔离，包括侧边栏浏览器打开的网页，任何网页里的漏洞都可以直接以你的身份读写文件、运行程序。只在排查期间使用，问题解决后请去掉。',
     'Temporary workaround: add --no-sandbox to the end of the shortcut’s Target and start again. This turns off the Chromium sandbox for every page, including web pages opened in the sidebar browser, so a flaw in any page can read and write your files and run programs as you. Use it only while troubleshooting and remove it afterwards.')
   return {
-    title: t('DSH Desktop Beta 无法启动', 'DSH Desktop Beta cannot start'),
+    title: t('Travel Buddy 无法启动', 'Travel Buddy cannot start'),
     message: failure.process === 'gpu'
-      ? t('Chromium 沙箱未能启动 GPU 进程，DSH Desktop Beta 无法显示窗口，即将退出。', 'The Chromium sandbox could not start the GPU process, so DSH Desktop Beta cannot show a window and will quit.')
-      : t('Chromium 沙箱未能启动渲染进程，DSH Desktop Beta 无法显示窗口，即将退出。', 'The Chromium sandbox could not start the renderer process, so DSH Desktop Beta cannot show a window and will quit.'),
+      ? t('Chromium 沙箱未能启动 GPU 进程，Travel Buddy 无法显示窗口，即将退出。', 'The Chromium sandbox could not start the GPU process, so Travel Buddy cannot show a window and will quit.')
+      : t('Chromium 沙箱未能启动渲染进程，Travel Buddy 无法显示窗口，即将退出。', 'The Chromium sandbox could not start the renderer process, so Travel Buddy cannot show a window and will quit.'),
     detail: [cause.join('\n'), t(`程序位置：${context.executable}`, `Program: ${context.executable}`), code, workaround].join('\n\n'),
     button: t('退出', 'Quit'),
   }
@@ -137,19 +137,19 @@ function quotedFolder(folder: string): string {
 export function lowIntegrityLaunchDialog(launch: LowIntegrityLaunch, language: 'zh' | 'en'): Omit<SandboxLaunchDialog, 'button'> {
   const t = (chinese: string, english: string): string => language === 'zh' ? chinese : english
   const cause = launch.labeled === undefined
-    ? [t('程序文件没有低完整性标签，所以是一个低完整性进程启动了 DSH Desktop Beta，例如在沙箱中运行的命令或终端。请从开始菜单或桌面快捷方式启动。',
-      'The program file carries no Low integrity label, so a Low integrity process started DSH Desktop Beta, such as a command or terminal running in the sandbox. Start it from the Start menu or a desktop shortcut.')]
+    ? [t('程序文件没有低完整性标签，所以是一个低完整性进程启动了 Travel Buddy，例如在沙箱中运行的命令或终端。请从开始菜单或桌面快捷方式启动。',
+      'The program file carries no Low integrity label, so a Low integrity process started Travel Buddy, such as a command or terminal running in the sandbox. Start it from the Start menu or a desktop shortcut.')]
     : [t(`程序文件带有低完整性（Low）标签，标签来自：${launch.labeled}`, `The program file carries a Low integrity label, which comes from: ${launch.labeled}`),
       t('这通常是因为这个文件夹被设成了工作区：Windows 沙箱给工作区授予写权限时，会给整个目录树加上这个标签。',
         'This usually means that folder was used as a workspace: when the Windows sandbox grants write access to a workspace, it gives the whole folder tree this label.'),
-      t('请在命令提示符或 PowerShell 中运行下面的命令（通常不需要管理员身份），然后重新启动 DSH Desktop Beta：',
-        'Run this command in Command Prompt or PowerShell (administrator rights are usually not needed), then start DSH Desktop Beta again:'),
+      t('请在命令提示符或 PowerShell 中运行下面的命令（通常不需要管理员身份），然后重新启动 Travel Buddy：',
+        'Run this command in Command Prompt or PowerShell (administrator rights are usually not needed), then start Travel Buddy again:'),
       `icacls ${quotedFolder(launch.labeled)} /setintegritylevel "(OI)(CI)Medium" /T /C /Q`,
       t('之后请换用安装目录以外的文件夹作为工作区。', 'Afterwards, use a folder outside the installation folder as the workspace.')]
   return {
-    title: t('DSH Desktop Beta 无法启动', 'DSH Desktop Beta cannot start'),
-    message: t('DSH Desktop Beta 正以低完整性级别运行，Chromium 在这个级别无法启动 GPU 进程，程序即将退出。',
-      'DSH Desktop Beta is running at Low integrity, where Chromium cannot start its GPU process, so it will quit.'),
+    title: t('Travel Buddy 无法启动', 'Travel Buddy cannot start'),
+    message: t('Travel Buddy 正以低完整性级别运行，Chromium 在这个级别无法启动 GPU 进程，程序即将退出。',
+      'Travel Buddy is running at Low integrity, where Chromium cannot start its GPU process, so it will quit.'),
     detail: [...cause, t(`程序位置：${launch.executable}`, `Program: ${launch.executable}`)].join('\n\n'),
   }
 }

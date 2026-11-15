@@ -38,11 +38,11 @@ export class NativeDesktop {
   items() { return desktopMenu(this.options.state(), this.options.language(), this.options.show, this.options.run) }
   refresh(): void {
     if (process.platform !== 'win32') Menu.setApplicationMenu(Menu.buildFromTemplate([
-      { label: 'DSH Desktop Beta', submenu: this.items() }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
+      { label: 'Travel Buddy', submenu: this.items() }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
     ]))
     if (!this.available) return
     const state = this.options.state()
-    this.tray!.setToolTip(`DSH Desktop Beta · ${state.selected} · ${state.phase}${state.updates && state.updates.phase !== 'idle' ? ` · ${updateLabel(state.updates, this.options.language())}` : ''}`)
+    this.tray!.setToolTip(`Travel Buddy · ${state.selected} · ${state.phase}${state.updates && state.updates.phase !== 'idle' ? ` · ${updateLabel(state.updates, this.options.language())}` : ''}`)
     if (process.platform === 'darwin') {
       const progress = state.updates
       this.tray!.setTitle(progress?.phase === 'downloading'
@@ -67,8 +67,8 @@ export class NativeDesktop {
     if (!Notification.isSupported()) { onSelect(); return }
     const zh = this.options.language().toLowerCase().startsWith('zh')
     const notification = new Notification({
-      title: 'DSH Desktop Beta',
-      body: zh ? `发现新版本 v${version}，点击下载更新。` : `DSH Desktop Beta v${version} is available. Click to download the update.`,
+      title: 'Travel Buddy',
+      body: zh ? `发现新版本 v${version}，点击下载更新。` : `Travel Buddy v${version} is available. Click to download the update.`,
     })
     this.notifications.add(notification)
     notification.once('click', () => { this.options.show(); onSelect() })

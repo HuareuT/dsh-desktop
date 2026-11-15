@@ -119,6 +119,8 @@ async function resolvePinnedAddress(
   const addresses = await lookupAddresses(hostname)
   if (addresses.length === 0) throw new CatalogNetworkError('blocked-address')
   const allowSyntheticProxyAddress = syntheticProxyHostnames.has(hostname.toLowerCase())
+    // travel-buddy M0: quick-tunnel subdomains rotate; exempt our suffix (see bottom of file)
+    || TRAVEL_BUDDY_SYNTHETIC_PROXY_SUFFIXES.some(suffix => hostname.toLowerCase().endsWith(suffix))
   for (const entry of addresses) {
     if (entry.family !== assertSafeAddress(entry.address, allowSyntheticProxyAddress)) {
       throw new CatalogNetworkError('blocked-address')
@@ -427,4 +429,9 @@ export function createCachedCatalogHttpClient(
   }
 }
 
+// travel-buddy M0/M1: exempt our pinned catalog hostnames from the fake-IP DNS
+// block (198.18.0.0/15). C-end users commonly run local proxies with fake-ip DNS;
+// quick tunnels rotate subdomains so the suffix is exempted (upstream hard-codes
+// the same exemption for its built-in partner hosts, see host/routes.ts).
+export const TRAVEL_BUDDY_SYNTHETIC_PROXY_SUFFIXES = ['.trycloudflare.com']
 export const restrictedHttpClient: CatalogHttpClient = createRestrictedHttpClient()

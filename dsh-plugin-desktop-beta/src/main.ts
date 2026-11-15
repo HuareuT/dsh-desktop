@@ -2,7 +2,7 @@
 import { installDesktopShortcuts } from './keyboard.ts'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, rmSync } from 'node:fs'
+import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { access, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { freemem, totalmem } from 'node:os'
@@ -92,7 +92,7 @@ const dshArguments = dshCommandArguments(process.argv, process.platform, process
 if (dshArguments !== undefined) execDshCommand(dshArguments)
 const normalElectronData = join(home, 'electron-user-data')
 privateDirectory(normalElectronData)
-app.setName('DSH Desktop Beta')
+app.setName('Travel Buddy')
 // Keep one application owner across normal and safe launches, before switching
 // Chromium storage to the disposable environment.
 app.setPath('userData', normalElectronData)
@@ -143,6 +143,66 @@ let quitting = false
 let onboarding = false
 let onboardingSurfaceActive = false
 let onboardingComputerUse = false
+// Travel Buddy T8 PoC: cloud-verified login gate in front of the whole startup chain.
+let travelLoggedIn = false
+let travelLoginBusy = false
+let travelToken: string | undefined
+/** Set once runtime.start() has been issued, so a post-logout re-login reuses the live host. */
+let travelHostStarted = false
+const TRAVEL_AUTH_BASE = 'http://127.0.0.1:8790'
+const TRAVEL_SESSION_FILE = join(home, '.travel-session.json')
+type TravelSession = { token: string; user: string }
+async function travelRequest(path: string, init: RequestInit): Promise<{ status: number; body: Record<string, unknown> | null }> {
+  const response = await fetch(`${TRAVEL_AUTH_BASE}${path}`, { ...init, signal: AbortSignal.timeout(4000) })
+  let body: Record<string, unknown> | null = null
+  try { body = await response.json() as Record<string, unknown> } catch { /* non-JSON error body */ }
+  return { status: response.status, body }
+}
+/** Boot-time check of a stored session token; fail-closed (unreachable server keeps the gate shut). */
+async function travelVerifyStoredSession(): Promise<void> {
+  let stored: TravelSession | undefined
+  try { stored = JSON.parse(readFileSync(TRAVEL_SESSION_FILE, 'utf8')) } catch { return }
+  if (!stored || typeof stored.token !== 'string') return
+  try {
+    const { status, body } = await travelRequest(`/api/verify?token=${encodeURIComponent(stored.token)}`, { method: 'GET' })
+    if (status === 200 && body?.ok === true) { travelLoggedIn = true; travelToken = stored.token }
+    else runtime.diagnostics.append('Travel auth: stored session rejected', 'info')
+  } catch (error) {
+    runtime.diagnostics.append(`Travel auth server unreachable during verify: ${String(error)}`, 'warn')
+  }
+}
+async function travelPerformLogin(username: string, password: string): Promise<void> {
+  let result: Awaited<ReturnType<typeof travelRequest>>
+  try {
+    result = await travelRequest('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) })
+  } catch {
+    throw new Error(t('无法连接登录服务，请检查网络后重试。', 'The sign-in service is unreachable. Check your connection and try again.'))
+  }
+  if (result.status !== 200 || result.body?.ok !== true || typeof result.body.token !== 'string') {
+    const message = typeof result.body?.error === 'string' ? result.body.error : t('登录失败', 'Sign-in failed')
+    throw new Error(message)
+  }
+  const loginUsername = typeof result.body.user === 'object' && result.body.user !== null && typeof (result.body.user as Record<string, unknown>).username === 'string'
+    ? (result.body.user as Record<string, unknown>).username : username
+  travelToken = result.body.token
+  try { writeFileSync(TRAVEL_SESSION_FILE, JSON.stringify({ token: result.body.token, user: loginUsername }, undefined, 2)) } catch { /* best effort */ }
+  runtime.diagnostics.append(`Travel auth: user ${username} signed in`, 'info')
+}
+/**
+ * T12.1: hand the session token to the web app so client plugins can verify
+ * entitlements (per-user plugin visibility) against the cloud themselves.
+ */
+function travelMainUrl(): string {
+  return travelToken ? `${APP_URL}?travel_token=${encodeURIComponent(travelToken)}` : APP_URL
+}
+/** The gated startup chain: recovery > login > onboarding > start. */
+function travelStartupChain(): void {
+  if (runtime.recoveryMode) { openControls('recovery'); return }
+  if (!travelLoggedIn) { openControls('login'); return }
+  if (onboarding) { openControls('onboarding'); return }
+  if (!travelHostStarted) { travelHostStarted = true; void runtime.start().catch(() => {}) }
+  openMain()
+}
 let relaunch: string[] | undefined
 let installingUpdate = false
 /** A later launch must not open a window on the data directory the startup prompt may reject. */
@@ -163,7 +223,7 @@ const crashDumps = join(normalElectronData, 'Crashpad')
 if (ownsInstance) {
   try {
     app.setPath('crashDumps', crashDumps)
-    startCrashReporting(crashReporter, { productName: 'DSH Desktop Beta', version, dsh: dshVersion })
+    startCrashReporting(crashReporter, { productName: 'Travel Buddy', version, dsh: dshVersion })
   } catch (error) { console.error('Local crash reporting is unavailable', error) }
 }
 // Finder and Dock launches carry no login-shell exports. Reading them takes one login shell's startup
@@ -375,7 +435,7 @@ function createWindow(preload: string, primary = false): BrowserWindow {
   if (primary) settledMainWindowState = restored
   const window = new BrowserWindow({ width: MAIN_WINDOW_WIDTH, height: MAIN_WINDOW_HEIGHT, minWidth: MAIN_WINDOW_MIN_WIDTH, minHeight: MAIN_WINDOW_MIN_HEIGHT,
     ...(restored?.bounds ?? {}),
-    show: false, title: 'DSH Desktop Beta',
+    show: false, title: 'Travel Buddy',
     ...(process.platform !== 'darwin' ? { icon: unpackedPath(join(root, 'build', process.platform === 'win32' ? 'app-icon.ico' : 'app-icon.png')) } : {}),
     ...(!primary ? auxiliaryWindowChromeOptions() : {}),
     ...(process.platform === 'win32' && primary ? {
@@ -466,6 +526,7 @@ function createWindow(preload: string, primary = false): BrowserWindow {
 
 function openSettings(page: DesktopSettingsPage = 'general'): void {
   if (quitting) return
+  if (!travelLoggedIn) { openControls('login'); return }
   if (onboarding) { openControls('onboarding'); return }
   if (runtime.recoveryMode || runtime.state().phase === 'error') { openControls('recovery'); return }
   pendingSettings = page
@@ -473,7 +534,7 @@ function openSettings(page: DesktopSettingsPage = 'general'): void {
   mainWindow?.webContents.send(IPC.settingsOpen)
 }
 
-function openControls(page: 'general' | 'profiles' | 'create-profile' | 'tools' | 'recovery' | 'permissions' | 'onboarding' = 'general'): void {
+function openControls(page: 'general' | 'profiles' | 'create-profile' | 'tools' | 'recovery' | 'permissions' | 'onboarding' | 'login' = 'general'): void {
   if (quitting) return
   if (page === 'general' || page === 'tools' || page === 'permissions') { openSettings(page === 'permissions' ? 'permissions' : 'general'); return }
   if (page === 'recovery' && !runtime.safeMode && !runtime.recoveryMode) {
@@ -496,10 +557,10 @@ function openControls(page: 'general' | 'profiles' | 'create-profile' | 'tools' 
   windowsLanguage = locale
   const url = `${SHELL_URL}?locale=${locale}&platform=${process.platform}&frame=${auxiliaryWindowHasCustomFrame()}#${page}`
   const resize = (window: BrowserWindow): void => {
-    const creating = page === 'create-profile'
+    const creating = page === 'create-profile' || page === 'login'
     window.setResizable(!creating)
     window.setMinimumSize(creating ? 420 : 680, creating ? 330 : 560)
-    window.setSize(creating ? 480 : page === 'onboarding' ? 1040 : 850, creating ? 360 : page === 'onboarding' ? 720 : 800)
+    window.setSize(creating ? 480 : page === 'onboarding' ? 1040 : 850, creating ? (page === 'login' ? 440 : 360) : page === 'onboarding' ? 720 : 800)
     if (process.platform === 'darwin') window.setWindowButtonPosition?.({ x: 16, y: page === 'onboarding' ? 18 : 12 })
     applyWindowMaterial(window, runtime.preferences)
   }
@@ -517,6 +578,7 @@ function openControls(page: 'general' | 'profiles' | 'create-profile' | 'tools' 
 function openMain(): void {
   if (quitting || confirmingDataDirectory) return
   if (runtime.recoveryMode || runtime.state().phase === 'error') { openControls('recovery'); return }
+  if (!travelLoggedIn) { openControls('login'); return }
   if (onboarding) { openControls('onboarding'); return }
   if (mainWindow && !mainWindow.isDestroyed()) { show(mainWindow); return }
   mainWindow = createWindow('preload-app.cjs', true)
@@ -581,7 +643,7 @@ function failRenderer(owner: BrowserWindow, error: unknown): void {
 async function loadMainDocument(owner: BrowserWindow, cause: Exclude<DesktopNavigationCause, 'page'>): Promise<void> {
   const pending = { owner, cause }
   pendingNavigation = pending
-  try { await owner.loadURL(APP_URL) } catch (error) {
+  try { await owner.loadURL(travelMainUrl()) } catch (error) {
     if (quitting || owner.isDestroyed() || mainWindow !== owner) return
     const failure = error as { code?: string; errno?: number }
     if (failure?.code === 'ERR_ABORTED' || failure?.errno === -3) return
@@ -634,7 +696,7 @@ function raiseDialogOwner(): BrowserWindow | undefined {
 
 async function confirmed(message: string, detail = t('将停止当前 Host，正在运行的任务会被中断。', 'This stops the current Host and interrupts running tasks.')): Promise<boolean> {
   const owner = raiseDialogOwner()
-  const options = { type: 'question' as const, title: 'DSH Desktop Beta', message, detail,
+  const options = { type: 'question' as const, title: 'Travel Buddy', message, detail,
     buttons: [t('继续', 'Continue'), t('取消', 'Cancel')], defaultId: 1, cancelId: 1 }
   const result = await (owner === undefined ? dialog.showMessageBox(options) : dialog.showMessageBox(owner, options))
   return result.response === 0 && !quitting
@@ -650,7 +712,7 @@ async function chooseAgain(purpose: ProgramDirectoryPurpose, overlap: ProgramDir
 /** Say where Profile repair saved the previous configuration before the relaunch opens Desktop setup. */
 async function announceRepair(backup: string): Promise<void> {
   const owner = raiseDialogOwner()
-  const options = { type: 'info' as const, title: 'DSH Desktop Beta', message: t('Profile 已修复', 'Profile repaired'),
+  const options = { type: 'info' as const, title: 'Travel Buddy', message: t('Profile 已修复', 'Profile repaired'),
     detail: t(`修复前的配置已备份到：\n${backup}\n\n应用将重启并打开设置向导，请重新选择插件市场、远程控制等功能。如需撤销修复，可在恢复助手的“快速恢复”页恢复修复前的配置。`,
       `The previous configuration was backed up to:\n${backup}\n\nThe app will restart and open the setup wizard, where you can choose Market, remote control and other features again. To undo the repair, restore the previous configuration from Quick recovery in the recovery assistant.`),
     buttons: [t('重启', 'Restart'), t('在文件夹中显示', 'Show in Folder')], defaultId: 0, cancelId: 0 }
@@ -675,7 +737,7 @@ async function promptAvailableUpdate(): Promise<void> {
   const owner = raiseDialogOwner()
   const options = {
     type: 'info' as const,
-    title: 'DSH Desktop Beta',
+    title: 'Travel Buddy',
     message: updateLabel(snapshot, windowsLanguage),
     buttons: [manual ? t('前往下载', 'Open download page') : t('下载更新', 'Download update'), t('稍后', 'Later')],
     defaultId: 0,
@@ -721,6 +783,35 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     openControls(input.page as Parameters<typeof openControls>[0]); return
   }
   if (type === 'close-controls') { shellWindow?.close(); return }
+  if (type === 'travel-login') {
+    if (typeof input.username !== 'string' || typeof input.password !== 'string' || !input.username.trim() || !input.password) throw new Error('Invalid login request')
+    if (travelLoginBusy) throw new Error(t('正在登录，请稍候。', 'Signing in, please wait.'))
+    travelLoginBusy = true
+    try {
+      await travelPerformLogin(input.username.trim(), input.password)
+      travelLoggedIn = true
+      // Mirror onboarding-complete: continue the gated chain and hand over to the main window.
+      if (runtime.recoveryMode) { openControls('recovery'); return }
+      if (onboarding) { openControls('onboarding'); return }
+      shellWindow?.hide()
+      if (!travelHostStarted) { travelHostStarted = true; void runtime.start().catch(() => {}) }
+      // A live main window still carries the previous session's token: reload it with the fresh one.
+      if (mainWindow && !mainWindow.isDestroyed()) void loadMainDocument(mainWindow, 'reload').catch(() => {})
+      openMain()
+      shellWindow?.close()
+    } finally { travelLoginBusy = false }
+    return
+  }
+  if (type === 'travel-logout') {
+    try { rmSync(TRAVEL_SESSION_FILE, { force: true }) } catch { /* best-effort local wipe */ }
+    travelLoggedIn = false
+    travelToken = undefined
+    runtime.diagnostics.append('Travel auth: user signed out', 'info')
+    // Keep the host alive (PoC); the gate is the window session. M1: full runtime stop/restart.
+    mainWindow?.hide()
+    openControls('login')
+    return
+  }
   if (type === 'quit') { app.quit(); return }
   if (['check-updates', 'download-update', 'install-update'].includes(type)) {
     if (!['darwin', 'win32', 'linux'].includes(process.platform) || quitting || runtime.busy) return
@@ -731,7 +822,7 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
         if (snapshot.phase === 'available' && (snapshot.installable || process.platform === 'linux')) await promptAvailableUpdate()
         else {
           const owner = raiseDialogOwner()
-          const options = { type: 'info' as const, title: 'DSH Desktop Beta', message: updateLabel(snapshot, windowsLanguage) }
+          const options = { type: 'info' as const, title: 'Travel Buddy', message: updateLabel(snapshot, windowsLanguage) }
           await (owner === undefined ? dialog.showMessageBox(options) : dialog.showMessageBox(owner, options))
         }
       }).catch(error => runtime.diagnostics.append(String(error), 'warn'))
@@ -780,7 +871,7 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     if (type === 'restart-app' || type === 'restart-recovery') {
       if (!await confirmed(type === 'restart-recovery'
         ? t('重启应用并进入恢复模式？', 'Restart the application in recovery mode?')
-        : t('现在重启 DSH Desktop Beta？', 'Restart DSH Desktop Beta now?'), type === 'restart-recovery'
+        : t('现在重启 Travel Buddy？', 'Restart Travel Buddy now?'), type === 'restart-recovery'
         ? t('应用将先打开恢复助手，暂不加载当前 Profile 和插件。正在运行的任务会中断。', 'The recovery assistant will open before loading the current Profile and plugins. Running tasks will be interrupted.')
         : undefined)) return
       relaunch = relaunchArguments(process.argv.slice(1), type === 'restart-recovery', runtime.safeMode)
@@ -975,7 +1066,7 @@ async function recoveryAction(input: Record<string, unknown>): Promise<void> {
   const action = input.action
   recoveryNotice = undefined
   if (action === 'restart') {
-    if (!await confirmed(runtime.safeMode ? t('退出安全模式并重启？', 'Exit Safe Mode and restart?') : t('现在重启 DSH Desktop Beta？', 'Restart DSH Desktop Beta now?'),
+    if (!await confirmed(runtime.safeMode ? t('退出安全模式并重启？', 'Exit Safe Mode and restart?') : t('现在重启 Travel Buddy？', 'Restart Travel Buddy now?'),
       runtime.safeMode
         ? t('应用将返回原 Profile，并移除临时环境。临时数据不会保留，正在运行的任务会中断。', 'The app will return to the original Profile and remove the temporary environment. Temporary data will not be kept, and running tasks will be interrupted.')
         : t('应用将退出恢复助手，重新启动原 Profile。', 'The app will leave the recovery assistant and restart the original Profile.'))) return
@@ -1062,7 +1153,7 @@ async function recoveryAction(input: Record<string, unknown>): Promise<void> {
  */
 function execDshCommand(args: readonly string[]): never {
   if (dataLocation.error) {
-    console.error(`dsh-plugin-desktop-beta: the data directory choice cannot be read; open DSH Desktop Beta to repair it: ${dataLocation.error}`)
+    console.error(`dsh-plugin-desktop-beta: the data directory choice cannot be read; open Travel Buddy to repair it: ${dataLocation.error}`)
     return process.exit(1)
   }
   let profile: string | undefined
@@ -1092,7 +1183,7 @@ async function confirmDataDirectory(): Promise<boolean> {
   // No window exists yet; a relaunched macOS app is not activated on its own.
   if (process.platform === 'darwin') app.focus({ steal: true })
   confirmingDataDirectory = true
-  const { response } = await dialog.showMessageBox({ type: 'warning', title: 'DSH Desktop Beta', noLink: true,
+  const { response } = await dialog.showMessageBox({ type: 'warning', title: 'Travel Buddy', noLink: true,
     message: t('数据目录与上次不同', 'The data directory differs from the last launch'),
     detail: [
       t(`本次：${home}（${source}）`, `This launch: ${home} (${source})`),
@@ -1174,7 +1265,7 @@ async function backupDataDirectory(): Promise<void> {
   if (failure) throw new Error(t('备份未完成：', 'Backup failed: ') + failure.message)
   runtime.diagnostics.append(`Backed up the data directory to ${destination}`)
   const done = raiseDialogOwner()
-  const notice = { type: 'info' as const, title: 'DSH Desktop Beta', message: t('数据目录已备份', 'Data directory backed up'), detail: destination,
+  const notice = { type: 'info' as const, title: 'Travel Buddy', message: t('数据目录已备份', 'Data directory backed up'), detail: destination,
     buttons: [t('在文件夹中显示', 'Show in folder'), t('完成', 'Done')], defaultId: 1, cancelId: 1, noLink: true }
   void (done === undefined ? dialog.showMessageBox(notice) : dialog.showMessageBox(done, notice))
     .then(result => { if (result.response === 0) shell.showItemInFolder(destination) })
@@ -1441,7 +1532,7 @@ async function main(): Promise<void> {
   native.createTray()
   updates.start()
   Menu.setApplicationMenu(process.platform === 'win32' ? null : Menu.buildFromTemplate([
-    { label: 'DSH Desktop Beta', submenu: native.items() }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
+    { label: 'Travel Buddy', submenu: native.items() }, { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
   ]))
   if (process.platform === 'win32') {
     ipcMain.handle(IPC.windowsMenu, (event, name: unknown, x: unknown, y: unknown) => {
@@ -1474,9 +1565,8 @@ async function main(): Promise<void> {
       if (validColor(symbolColor)) mainWindow!.setTitleBarOverlay({ color: WINDOWS_CAPTION_FILL, symbolColor })
     })
   }
-  if (runtime.recoveryMode) openControls('recovery')
-  else if (onboarding) openControls('onboarding')
-  else { void runtime.start().catch(() => {}); openMain() }
+  // Travel Buddy gate: verify a stored cloud session (fail-closed), then run the gated startup chain.
+  void travelVerifyStoredSession().catch(() => {}).then(() => travelStartupChain())
   app.on('activate', openMain)
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !native.available && !replacingWindow) app.quit() })
 }

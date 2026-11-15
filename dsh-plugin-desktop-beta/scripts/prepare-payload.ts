@@ -1,4 +1,4 @@
-/** Materialize the Next payload independently of Electron Builder, then seal it. */
+﻿/** Materialize the Next payload independently of Electron Builder, then seal it. */
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
@@ -282,7 +282,7 @@ export async function preparePayload(options: PreparePayloadOptions): Promise<De
     writeWindowsCodeFiles(output, windowsCode)
     log(`Discovered ${String(windowsCode.size)} Windows PE files while hashing the payload`)
   }
-  log(`Sealed the prepared payload: ${String(descriptor.files.length)} files; DSH Desktop Beta ${release.version}, dsh ${release.dshVersion}, Electron ${release.electronVersion}, pnpm ${release.pnpmVersion}`)
+  log(`Sealed the prepared payload: ${String(descriptor.files.length)} files; Travel Buddy ${release.version}, dsh ${release.dshVersion}, Electron ${release.electronVersion}, pnpm ${release.pnpmVersion}`)
   return descriptor
 }
 

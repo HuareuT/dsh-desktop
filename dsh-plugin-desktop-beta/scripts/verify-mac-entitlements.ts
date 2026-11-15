@@ -1,4 +1,4 @@
-/** Inspect the actual signatures, not merely the builder's entitlement input. */
+﻿/** Inspect the actual signatures, not merely the builder's entitlement input. */
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 
@@ -19,7 +19,7 @@ const readEntitlements: ReadEntitlements = (path, arch) => {
 /** Both Universal slices and every Electron Helper must retain microphone access. */
 export function verifyNextMacEntitlements(appPath: string, read: ReadEntitlements = readEntitlements): void {
   const targets = [appPath, ...['', ' (Renderer)', ' (GPU)', ' (Plugin)']
-    .map(suffix => join(appPath, 'Contents', 'Frameworks', `DSH Desktop Beta Helper${suffix}.app`))]
+    .map(suffix => join(appPath, 'Contents', 'Frameworks', `Travel Buddy Helper${suffix}.app`))]
   for (const target of targets) {
     for (const arch of ['arm64', 'x86_64']) {
       const entitlements = read(target, arch)

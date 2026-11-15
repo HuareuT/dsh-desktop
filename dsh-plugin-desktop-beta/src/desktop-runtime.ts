@@ -397,6 +397,10 @@ export class NextDesktopRuntime {
     let stopped = false
     const host = new DesktopHostProcess(options.executable, options.root, new NextProfiles(actualHome).directory(profile), undefined,
       { ...process.env, DSH_HOME: actualHome, DSH_NEXT_NATIVE_TOKEN: token,
+        // Travel Buddy product switches (unified hide pass comes later):
+        // - office skills + workspace dependency tool: mounted (default upstream behavior)
+        // - built-in market sources (1024Store/dshfind/dshmarket): restored
+        TRAVEL_KEEP_BUILTIN_MARKET_SOURCES: '1',
         DSH_NEXT_PREFERENCES: JSON.stringify(effective), DSH_NEXT_TRUSTED_HOSTS: JSON.stringify(addresses),
         [SYSTEM_PROXY_ENV]: JSON.stringify(options.systemProxy?.() ?? {}),
         ...(this.safeMode ? { DSH_TELEMETRY_DISABLED: '1' } : {}) },

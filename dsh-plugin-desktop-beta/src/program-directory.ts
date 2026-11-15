@@ -116,17 +116,17 @@ export function programDirectoryRefusal(purpose: ProgramDirectoryPurpose, overla
   language: 'zh' | 'en'): ProgramDirectoryRefusal {
   const t = (chinese: string, english: string): string => language === 'zh' ? chinese : english
   const relation = {
-    same: t('所选文件夹就是 DSH Desktop Beta 的安装目录。', 'The selected folder is the DSH Desktop Beta installation folder.'),
-    inside: t('所选文件夹位于 DSH Desktop Beta 的安装目录中。', 'The selected folder is inside the DSH Desktop Beta installation folder.'),
-    contains: t('所选文件夹包含 DSH Desktop Beta 的安装目录。', 'The selected folder contains the DSH Desktop Beta installation folder.'),
+    same: t('所选文件夹就是 Travel Buddy 的安装目录。', 'The selected folder is the Travel Buddy installation folder.'),
+    inside: t('所选文件夹位于 Travel Buddy 的安装目录中。', 'The selected folder is inside the Travel Buddy installation folder.'),
+    contains: t('所选文件夹包含 Travel Buddy 的安装目录。', 'The selected folder contains the Travel Buddy installation folder.'),
   }[overlap]
   const reason = purpose === 'workspace'
-    ? t('沙箱给工作区授予写权限时，会给整个目录树加上低完整性（Low）标签。安装目录中的程序带上这个标签后，DSH Desktop Beta 将无法再启动。请选择安装目录以外的文件夹作为工作区。',
-      'When the sandbox grants write access to a workspace, it gives the whole folder tree a Low integrity label. Once the program in the installation folder carries that label, DSH Desktop Beta can no longer start. Choose a folder outside the installation folder as the workspace.')
+    ? t('沙箱给工作区授予写权限时，会给整个目录树加上低完整性（Low）标签。安装目录中的程序带上这个标签后，Travel Buddy 将无法再启动。请选择安装目录以外的文件夹作为工作区。',
+      'When the sandbox grants write access to a workspace, it gives the whole folder tree a Low integrity label. Once the program in the installation folder carries that label, Travel Buddy can no longer start. Choose a folder outside the installation folder as the workspace.')
     : t('更新会替换安装目录中的文件，卸载会删除整个安装目录，放在其中的数据会随之丢失。请选择安装目录以外的文件夹作为数据目录。',
       'Updates replace the files in the installation folder and uninstalling removes it, so data kept there would be lost. Choose a folder outside the installation folder as the data directory.')
   return {
-    title: 'DSH Desktop Beta',
+    title: 'Travel Buddy',
     message: purpose === 'workspace' ? t('不能用这个文件夹作为工作区', 'This folder cannot be the workspace') : t('不能用这个文件夹作为数据目录', 'This folder cannot be the data directory'),
     detail: [relation, reason, t(`安装目录：${program}`, `Installation folder: ${program}`)].join('\n\n'),
     buttons: [t('重新选择', 'Choose another folder'), t('取消', 'Cancel')],

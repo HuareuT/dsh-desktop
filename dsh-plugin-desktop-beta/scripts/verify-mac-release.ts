@@ -1,4 +1,4 @@
-/** Reuse the signed universal DMG verifier with Next's application identity. */
+﻿/** Reuse the signed universal DMG verifier with Next's application identity. */
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readdirSync, rmdirSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -30,7 +30,7 @@ export function nextMacVerification(signed: boolean, distDir: string, env: NodeJ
   const architecture = signed ? undefined : macSmokeArchitecture(env)
   const smokeSlices = architecture === undefined ? undefined : macSmokeExecutableSlices(architecture)
   const inPlace = architecture !== undefined && macSmokeTarget(env) === 'dir' ? join(distDir, macApplicationDirectory(architecture)) : undefined
-  return { distDir, productName: 'DSH Desktop Beta', nativeEntries: NEXT_MAC_NATIVE_ENTRIES,
+  return { distDir, productName: 'Travel Buddy', nativeEntries: NEXT_MAC_NATIVE_ENTRIES,
     // Next archives its application; native files live beside the archive.
     unpackedRoot: appPath => join(appPath, 'Contents', 'Resources', 'app.asar.unpacked'),
     listDmgs: inPlace !== undefined ? () => [inPlace] : path => readdirSync(path).filter(name => name.endsWith('.dmg')).map(name => join(path, name)).filter(path => statSync(path).isFile()),

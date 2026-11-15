@@ -31,7 +31,7 @@ export interface BuiltInProviderDefinition {
   readonly partnership: boolean
 }
 
-export const BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] = [
+const ALL_BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] = [
   {
     key: DSH_1024STORE_KEY,
     name: 'DSH 1024Store',
@@ -61,6 +61,14 @@ export const BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] = [
     partnership: true,
   },
 ]
+
+/**
+ * Travel Buddy factory-clean build: ship no third-party built-in catalog sources by default.
+ * Sources then come only from what the operator/admin adds (e.g. the private vertical catalog).
+ * Set TRAVEL_KEEP_BUILTIN_MARKET_SOURCES=1 to restore the upstream behavior for development.
+ */
+export const BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] =
+  process.env.TRAVEL_KEEP_BUILTIN_MARKET_SOURCES === '1' ? ALL_BUILT_IN_PROVIDERS : []
 
 const adapters = new Map<string, CatalogAdapter>([
   [standardHttpAdapter.adapterId, standardHttpAdapter],

@@ -65,7 +65,7 @@ function logTail(log: string): string {
  */
 export function renderFailureReport(input: FailureReportInput): string {
   const lines = [
-    'DSH Desktop Beta failure report',
+    'Travel Buddy failure report',
     'Review it before sharing: it can contain local paths and plugin output.',
     '',
     `time: ${input.time.toISOString()}`,

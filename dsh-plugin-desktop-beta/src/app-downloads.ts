@@ -61,7 +61,7 @@ export function installAppDownloads(session: Pick<Session, 'on'>, options: {
     if (owner.isDestroyed()) return
     const zh = options.language().startsWith('zh')
     void dialog.showMessageBox(owner, {
-      type: 'error', title: 'DSH Desktop Beta', message: zh ? '下载失败' : 'Download failed',
+      type: 'error', title: 'Travel Buddy', message: zh ? '下载失败' : 'Download failed',
       detail: error instanceof Error ? error.message : String(error),
     }).catch(options.warn)
   }

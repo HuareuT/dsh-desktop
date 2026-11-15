@@ -1,4 +1,4 @@
-/** Check the bundled interpreter payloads inside a mounted Next application. */
+﻿/** Check the bundled interpreter payloads inside a mounted Next application. */
 import { spawnSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 import { workspaceDependencyPaths } from '@deepseek-ai/dsh-tool-workspace-dependencies'
@@ -24,7 +24,7 @@ const runCommand: RunCommand = (command, args) => {
  * and pnpm on the host's CPU; and, for a signed release, hardened-runtime signatures with the
  * upstream entitlement policy: JIT for Node, unsigned executable memory only for x64 Node, no
  * entitlements for Python.
- * @param appPath - Mounted `DSH Desktop Beta.app`.
+ * @param appPath - Mounted `Travel Buddy.app`.
  * @param signed - Whether the release carries Developer ID signatures.
  * @param run - Command executor.
  * @param readEntitlements - Entitlement reader for one signed file.

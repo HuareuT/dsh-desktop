@@ -115,6 +115,8 @@ export type DesktopCommand =
   | { type: 'recovery-action'; action: string; id?: string }
   | ({ type: 'onboarding-complete'; profile: string; browserAccess?: boolean; networkExposure?: 'loopback' | 'lan' } & OnboardingChoices)
   | { type: 'onboarding-skip'; profile: string }
+  | { type: 'travel-login'; username: string; password: string }
+  | { type: 'travel-logout' }
   | { type: 'confirm-lan' }
   | { type: 'open-browser-url' | 'copy-browser-url'; url: string }
   | { type: 'create' | 'switch' | 'delete'; name: string }

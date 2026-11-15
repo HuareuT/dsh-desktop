@@ -143,8 +143,10 @@ export async function main(): Promise<void> {
   // The shell signs the official account plugin's embedded Platform pages (top-up, usage) in with this grant.
   if (!stopping) installPlatformSessionPublisher(ctx, (session) => { void send({ type: 'platform-session', session }).catch(() => {}) })
   // Office skills and the workspace dependency tool need the bundled payload; a packaged Host without it fails here.
-  const office = resolveOfficeConfig(runtimeDir, primaryRuntime, home)
-  if (office === undefined) hostLog({ source: 'host', event: 'office.unavailable', level: 'warn', fields: { source: primaryRuntime } })
+  // Travel Buddy factory-clean: skip the bundled Office composition so the product ships only vertical capabilities.
+  const officeDisabled = process.env.TRAVEL_DISABLE_OFFICE_SKILLS === '1'
+  const office = officeDisabled ? undefined : resolveOfficeConfig(runtimeDir, primaryRuntime, home)
+  if (office === undefined) hostLog({ source: 'host', event: officeDisabled ? 'office.disabled' : 'office.unavailable', level: 'warn', fields: { source: primaryRuntime } })
   else {
     const mounted = hostOperation('host', 'office.mount', { source: office.source })
     try { await ctx.plugin(desktopOffice, office); mounted() } catch (error) { mounted(error); throw error }

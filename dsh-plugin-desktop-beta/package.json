@@ -3,7 +3,7 @@
   "version": "2.0.22-beta.1",
   "private": true,
   "description": "Desktop Beta integration for the DeepSeek Harness",
-  "desktopName": "dsh-desktop-beta.desktop",
+  "desktopName": "travel-buddy.desktop",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -48,7 +48,7 @@
     "check:linux-package": "yarn workspace dsh-community-market build && yarn build && yarn verify:frontend"
   },
   "dependencies": {
-    "@agents-anywhere/dsh-bridge-next": "file:../vendor/agents-anywhere/agents-anywhere-dsh-bridge-next-2.1.0-desktop.cc1883dad3ff4.r5dbd817f.tgz",
+    "@agents-anywhere/dsh-bridge-next": "file:../vendor/agents-anywhere/agents-anywhere-dsh-bridge-next-2.2.0-desktop.caa12e7a2c181.r5dbd817f.tgz",
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/cordis-plugin-group": "1.1.0",
     "@deepseek-ai/cordis-plugin-include": "1.1.0",
@@ -336,8 +336,8 @@
     ]
   },
   "build": {
-    "appId": "ai.deepseek.dsh.desktop.beta",
-    "productName": "DSH Desktop Beta",
+    "appId": "com.travelbuddy.desktop",
+    "productName": "Travel Buddy",
     "asar": true,
     "beforeBuild": "./scripts/before-build.ts",
     "beforePack": "./scripts/prepare-pack.ts",
@@ -373,7 +373,7 @@
       }
     ],
     "mac": {
-      "artifactName": "DSH-Desktop-Beta-${version}-${arch}.${ext}",
+      "artifactName": "TravelBuddy-${version}-${arch}.${ext}",
       "target": [
         "dir"
       ],
@@ -385,9 +385,9 @@
           "en",
           "zh_CN"
         ],
-        "NSMicrophoneUsageDescription": "DSH Desktop Beta uses the microphone when you enable a feature that records audio.",
-        "NSAudioCaptureUsageDescription": "DSH Desktop Beta captures screen audio when you request it.",
-        "NSLocalNetworkUsageDescription": "DSH Desktop Beta connects to devices on your local network when you enable network access.",
+        "NSMicrophoneUsageDescription": "Travel Buddy uses the microphone when you enable a feature that records audio.",
+        "NSAudioCaptureUsageDescription": "Travel Buddy captures screen audio when you request it.",
+        "NSLocalNetworkUsageDescription": "Travel Buddy connects to devices on your local network when you enable network access.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -424,7 +424,7 @@
           ]
         }
       ],
-      "artifactName": "DSH-Desktop-Beta-${version}-${arch}-Portable.${ext}",
+      "artifactName": "TravelBuddy-${version}-${arch}-Portable.${ext}",
       "icon": "build/app-icon.ico",
       "extraResources": [
         {
@@ -441,9 +441,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "differentialPackage": false,
-      "shortcutName": "DSH Desktop Beta",
+      "shortcutName": "Travel Buddy",
       "useZip": false,
-      "artifactName": "DSH-Desktop-Beta-${version}-${arch}-Setup.${ext}",
+      "artifactName": "TravelBuddy-${version}-${arch}-Setup.${ext}",
       "installerIcon": "build/app-icon.ico",
       "uninstallerIcon": "build/app-icon.ico",
       "include": "../dsh-plugin-desktop/build/installer.nsh"
@@ -453,11 +453,11 @@
         "dir"
       ],
       "icon": "build/icons",
-      "artifactName": "DSH-Desktop-Beta-${version}-${arch}.${ext}",
+      "artifactName": "TravelBuddy-${version}-${arch}.${ext}",
       "category": "Development",
-      "synopsis": "Agentic coding desktop for the DeepSeek Harness (Beta)",
-      "maintainer": "DeepSeek <dsh-desktop@deepseek.com>",
-      "executableName": "dsh-desktop-beta",
+      "synopsis": "Travel Buddy - AI travel assistant desktop (Beta)",
+      "maintainer": "Travel Buddy <support@travelbuddy.app>",
+      "executableName": "travel-buddy",
       "syncDesktopName": true,
       "extraResources": [
         {
@@ -467,7 +467,7 @@
       ]
     },
     "deb": {
-      "packageName": "dsh-desktop-beta",
+      "packageName": "travel-buddy",
       "packageCategory": "devel",
       "priority": "optional",
       "depends": [

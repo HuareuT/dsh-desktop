@@ -1,4 +1,4 @@
-/** Relocatable, integrity-recorded production payload carried by one Next release. */
+﻿/** Relocatable, integrity-recorded production payload carried by one Next release. */
 
 import { createHash } from 'node:crypto'
 import { closeSync, createReadStream, lstatSync, openSync, readdirSync, readFileSync, readSync, writeFileSync } from 'node:fs'
@@ -430,7 +430,7 @@ export function readInstalledPackageVersion(appRoot: string, name: string): stri
 export function verifyPackagedRuntimeIdentity(descriptorFile: string, identity: PackagedRuntimeIdentity): DesktopRuntimeDescriptor {
   const descriptor = readDesktopRuntime(descriptorFile)
   if (descriptor.release.version !== identity.version) {
-    throw new Error(`desktop runtime: payload ${descriptor.release.version} does not belong to DSH Desktop Beta ${identity.version}`)
+    throw new Error(`desktop runtime: payload ${descriptor.release.version} does not belong to Travel Buddy ${identity.version}`)
   }
   if (descriptor.release.dshVersion !== identity.dshVersion) {
     throw new Error(`desktop runtime: payload declares dsh ${descriptor.release.dshVersion} but ${identity.dshVersion} is installed`)

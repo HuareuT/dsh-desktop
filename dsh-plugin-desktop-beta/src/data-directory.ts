@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Resolve the Next data directory: a directory chosen in the app wins, `DSH_DESKTOP_NEXT_HOME`
  * applies only without one, and `~/.dsh` is the default. The choice and the record of the last
  * launch live in one fixed directory, outside every data directory and independent of the
@@ -26,7 +26,7 @@ export interface DataDirectoryLocation {
 export function defaultDataDirectory(userHome = homedir()): string { return join(userHome, '.dsh-beta') }
 
 export function dataDirectoryLocationRoot(packaged: boolean, appData: () => string, packageRoot: string): string {
-  return packaged ? join(appData(), 'DSH Desktop Beta', 'home') : join(packageRoot, '.desktop-next', 'home')
+  return packaged ? join(appData(), 'Travel Buddy', 'home') : join(packageRoot, '.desktop-next', 'home')
 }
 
 export function dataDirectoryLocationFile(locationRoot: string): string { return join(locationRoot, LOCATION_FILE) }

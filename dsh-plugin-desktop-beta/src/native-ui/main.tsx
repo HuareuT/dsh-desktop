@@ -15,6 +15,13 @@ import { hostExitDetail } from '../exit-code.ts'
 import { recoverySupport } from '../recovery-support.ts'
 import './theme.css'
 import { Onboarding } from './onboarding.tsx'
+import { TravelLogin } from './login.tsx'
+
+// TEMP T8 debug: announce module boot, surface any window error via console (captured by main probe).
+console.log('T8 native-ui module booted', location.href)
+window.addEventListener('error', event => console.error('T8 window error:', event.message, event.filename, event.lineno))
+window.addEventListener('unhandledrejection', event => console.error('T8 unhandled rejection:', String(event.reason)))
+document.addEventListener('DOMContentLoaded', () => { console.log('T8 DOMContentLoaded, root=', !!document.getElementById('root')) })
 
 function App() {
   const adapter = useMemo(() => window.desktopNext ? new NextSettingsAdapter(window.desktopNext) : undefined, [])
@@ -71,6 +78,7 @@ function NativePages({ adapter }: { adapter: NextSettingsAdapter }) {
   }, [adapter, busy, state])
   if (!state) return <><DesktopFrame /><main className={page === 'onboarding' ? 'next-onboarding dshNativeContent p-6' : 'dshNativeContent p-6'} data-platform={new URLSearchParams(location.search).get('platform') ?? undefined} data-material="transparent"><Alert><AlertDescription>{t('正在读取桌面状态…', 'Loading Desktop state…')}</AlertDescription></Alert></main></>
   if (page === 'onboarding') return <Onboarding key={state.selected} state={state} locale={locale} bridge={adapter.bridge} />
+  if (page === 'login') return <TravelLogin locale={locale} bridge={adapter.bridge} />
   if (page === 'create-profile') return <ProfileCreateApp onCancel={() => { void perform({ type: 'close-controls' }) }} onCreate={async name => {
     await adapter.command({ type: 'create', name })
     await adapter.command({ type: 'switch', name })
@@ -132,3 +140,9 @@ function NativePages({ adapter }: { adapter: NextSettingsAdapter }) {
 }
 
 createRoot(document.getElementById('root')!).render(<CSPProvider disableStyleElements><App /></CSPProvider>)
+
+// TEMP T8 debug: dump what React actually rendered, 1.5s after mount.
+setTimeout(() => {
+  const root = document.getElementById('root')
+  console.log('T8 rendered check: root children=', root?.childElementCount, ' text=', root?.textContent?.replace(/\s+/g, ' ').slice(0, 200))
+}, 1500)

@@ -6,15 +6,15 @@ import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 
 const execute = promisify(execFile)
-export const NEXT_APP_ID = 'ai.deepseek.dsh.desktop.beta'
+export const NEXT_APP_ID = 'com.travelbuddy.desktop'
 
 const MAC_PROGRESS_UI_SCRIPT = `
 ObjC.import("Cocoa");
 const app = $.NSApplication.sharedApplication;
 app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
 const env = $.NSProcessInfo.processInfo.environment;
-const title = ObjC.unwrap(env.objectForKey("DSH_UPDATE_TITLE")) || "DSH Desktop Beta";
-const message = ObjC.unwrap(env.objectForKey("DSH_UPDATE_MESSAGE")) || "Updating DSH Desktop Beta…";
+const title = ObjC.unwrap(env.objectForKey("DSH_UPDATE_TITLE")) || "Travel Buddy";
+const message = ObjC.unwrap(env.objectForKey("DSH_UPDATE_MESSAGE")) || "Updating Travel Buddy…";
 const win = $.NSWindow.alloc.initWithContentRectStyleMaskBackingDefer($.NSMakeRect(0, 0, 380, 110), $.NSTitledWindowMask, $.NSBackingStoreBuffered, false);
 win.setTitle($(title));
 win.setLevel($.NSFloatingWindowLevel);
@@ -77,7 +77,7 @@ export function assertNextMacBundle(identifier: string, manifest: unknown, versi
 }
 
 export function assertNextWindowsInstaller(info: { ProductName?: unknown; ProductVersion?: unknown }, version: string): void {
-  if (info.ProductName !== 'DSH Desktop Beta' || info.ProductVersion !== version) throw new Error('The installer does not match this Next release')
+  if (info.ProductName !== 'Travel Buddy' || info.ProductVersion !== version) throw new Error('The installer does not match this Next release')
 }
 
 export class NextUpdateInstaller {
@@ -150,7 +150,7 @@ export class NextUpdateInstaller {
       const prepared = this.prepared
       if (!this.nativeReady || !prepared?.bundle || !prepared.installed || !prepared.directory) throw new Error('No prepared update installer')
       const zh = (this.options.language?.() ?? 'en').toLowerCase().startsWith('zh')
-      const message = zh ? `正在更新 DSH Desktop Beta 至 ${prepared.version}，请稍候…` : `Updating DSH Desktop Beta to ${prepared.version}, please wait…`
+      const message = zh ? `正在更新 Travel Buddy 至 ${prepared.version}，请稍候…` : `Updating Travel Buddy to ${prepared.version}, please wait…`
       await new Promise<void>((resolve, reject) => {
         const child = spawn('/bin/sh', ['-c', MAC_UPDATE_SCRIPT], {
           detached: true, stdio: 'ignore', shell: false, cwd: '/',
@@ -160,7 +160,7 @@ export class NextUpdateInstaller {
             DSH_UPDATE_STAGED: prepared.bundle!,
             DSH_UPDATE_INSTALLED: prepared.installed!,
             DSH_UPDATE_DIR: prepared.directory!,
-            DSH_UPDATE_TITLE: 'DSH Desktop Beta',
+            DSH_UPDATE_TITLE: 'Travel Buddy',
             DSH_UPDATE_MESSAGE: message,
             DSH_UPDATE_UI_SCRIPT: MAC_PROGRESS_UI_SCRIPT,
           },

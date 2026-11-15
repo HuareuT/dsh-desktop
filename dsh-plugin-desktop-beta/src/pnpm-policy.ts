@@ -1,13 +1,13 @@
-/** Desktop-wide pnpm policy applied to every package-manager operation. */
+﻿/** Desktop-wide pnpm policy applied to every package-manager operation. */
 
 /**
- * DSH Desktop accepts explicitly requested package versions immediately.
+ * Travel Buddy accepts explicitly requested package versions immediately.
  * Keep this process-local: never rewrite a user's pnpm configuration file.
  */
 export const PNPM_IGNORE_MINIMUM_RELEASE_AGE = '--config.minimumReleaseAge=0'
 
 /**
- * The bundled pnpm is released with DSH Desktop and cannot update itself, so its
+ * The bundled pnpm is released with Travel Buddy and cannot update itself, so its
  * update notice would recommend a `pnpm self-update` that never takes effect.
  * Keep this process-local: never rewrite a user's pnpm configuration file.
  */

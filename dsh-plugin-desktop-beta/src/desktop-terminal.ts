@@ -1,4 +1,4 @@
-/** Isolated command-line environment launched from the DSH Desktop tray. */
+/** Isolated command-line environment launched from the Travel Buddy tray. */
 
 import type { ChildProcess, SpawnOptions } from 'node:child_process'
 import {
@@ -50,7 +50,7 @@ const EXECUTABLE_FILE_MODE = 0o700
 const PRIVATE_FILE_MODE = 0o600
 const WINDOWS_SHELL_COMMANDS = ['pwsh.exe', 'powershell.exe', 'cmd.exe'] as const
 
-/** Platforms with a native terminal launch contract owned by DSH Desktop. */
+/** Platforms with a native terminal launch contract owned by Travel Buddy. */
 export type DesktopTerminalPlatform = 'darwin' | 'win32'
 
 /** Process launcher injected by the Electron adapter. */
@@ -350,7 +350,7 @@ function macWelcome(
     `export PATH=${quoteSh(shimDir)}:"\${PATH:-}"`,
     `cd ${quoteSh(options.profileDir)}`,
     "printf '\\033[2J\\033[3J\\033[H'",
-    `printf '%s\\n' ${quoteSh(`DSH Desktop ${options.productVersion} terminal`)}`,
+    `printf '%s\\n' ${quoteSh(`Travel Buddy ${options.productVersion} terminal`)}`,
     `printf '%s\\n' ${quoteSh(terminalModeLabel(options.mode))}`,
     `printf '%s\\n' ${quoteSh(`Profile: ${options.profileName}`)}`,
     `printf '%s\\n' ${quoteSh(`Profile directory: ${options.profileDir}`)}`,
@@ -361,7 +361,7 @@ function macWelcome(
     `printf '  %s\\n' ${quoteSh(pluginAdd)}`,
     `printf '  %s\\n' ${quoteSh(pluginRemove)}`,
     `printf '  %s\\n' ${quoteSh(pluginUpdate)}`,
-    `printf '%s\\n' ${quoteSh('Restart DSH Desktop after plugin changes.')}`,
+    `printf '%s\\n' ${quoteSh('Restart Travel Buddy after plugin changes.')}`,
     'case "${SHELL:-/bin/zsh}" in',
     '  */bash)',
     '    export DSH_DESKTOP_USER_BASHRC="${HOME:-}/.bashrc"',
@@ -394,7 +394,7 @@ function windowsWelcome(): string {
     `$dshDesktopPath = @($env:${PATH} -split ';' | Where-Object { -not [string]::Equals($_, $dshDesktopShimDir, [StringComparison]::OrdinalIgnoreCase) })`,
     `$env:${PATH} = (@($dshDesktopShimDir) + $dshDesktopPath) -join ';'`,
     `Set-Location -LiteralPath $env:${WINDOWS_PROFILE_DIRECTORY}`,
-    `Write-Host ("DSH Desktop {0} terminal" -f $env:${WINDOWS_PRODUCT_VERSION})`,
+    `Write-Host ("Travel Buddy {0} terminal" -f $env:${WINDOWS_PRODUCT_VERSION})`,
     `Write-Host $env:${WINDOWS_TERMINAL_MODE}`,
     `Write-Host ("Profile: {0}" -f $env:${DEFAULT_PROFILE})`,
     `Write-Host ("Profile directory: {0}" -f $env:${WINDOWS_PROFILE_DIRECTORY})`,
@@ -405,7 +405,7 @@ function windowsWelcome(): string {
     `Write-Host '  ${pluginAdd}'`,
     `Write-Host '  ${pluginRemove}'`,
     `Write-Host '  ${pluginUpdate}'`,
-    `Write-Host 'Restart DSH Desktop after plugin changes.'`,
+    `Write-Host 'Restart Travel Buddy after plugin changes.'`,
     '',
   ].join('\r\n')
 }
@@ -421,7 +421,7 @@ function windowsCmdWelcome(): string {
     'setlocal EnableDelayedExpansion',
     `set "${RUN_AS_NODE}="`,
     `cd /d "!${WINDOWS_PROFILE_DIRECTORY}!"`,
-    `echo(DSH Desktop !${WINDOWS_PRODUCT_VERSION}! terminal`,
+    `echo(Travel Buddy !${WINDOWS_PRODUCT_VERSION}! terminal`,
     `echo(!${WINDOWS_TERMINAL_MODE}!`,
     `echo(Profile: !${DEFAULT_PROFILE}!`,
     `echo(Profile directory: !${WINDOWS_PROFILE_DIRECTORY}!`,
@@ -432,7 +432,7 @@ function windowsCmdWelcome(): string {
     `echo(  ${escapeBatchText(pluginAdd)}`,
     `echo(  ${escapeBatchText(pluginRemove)}`,
     `echo(  ${escapeBatchText(pluginUpdate)}`,
-    `echo(${escapeBatchText('Restart DSH Desktop after plugin changes.')}`,
+    `echo(${escapeBatchText('Restart Travel Buddy after plugin changes.')}`,
     'endlocal & set "ELECTRON_RUN_AS_NODE="',
     '',
   ].join('\r\n')
@@ -650,7 +650,7 @@ function windowsLaunchBroker(
   return [
     '@echo off',
     'setlocal EnableDelayedExpansion',
-    `start "DSH Desktop Beta" /D "!${WINDOWS_PROFILE_DIRECTORY}!" ${target}`,
+    `start "Travel Buddy" /D "!${WINDOWS_PROFILE_DIRECTORY}!" ${target}`,
     'exit /b %errorlevel%',
     '',
   ].join('\r\n')
