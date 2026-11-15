@@ -1,10 +1,10 @@
-﻿/**
+/**
  * Resolve the Next data directory: a directory chosen in the app wins, `DSH_DESKTOP_NEXT_HOME`
  * applies only without one, and `~/.dsh` is the default. The choice and the record of the last
  * launch live in one fixed directory, outside every data directory and independent of the
  * environment, so neither moves when the variable is added, changed or lost.
  */
-import { lstatSync, readdirSync, realpathSync } from 'node:fs'
+import { lstatSync, readdirSync, realpathSync, renameSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { atomicJson, privateDirectory, readPrivateFile } from './private-files.ts'
@@ -23,7 +23,28 @@ export interface DataDirectoryLocation {
   error?: string
 }
 
-export function defaultDataDirectory(userHome = homedir()): string { return join(userHome, '.dsh-beta') }
+export function defaultDataDirectory(userHome = homedir()): string { return join(userHome, '.travel-buddy') }
+
+const LEGACY_DEFAULT_HOME_NAME = '.dsh-beta'
+
+/**
+ * One-time move of the former default `~/.dsh-beta` onto the renamed `~/.travel-buddy`. Renaming
+ * keeps profiles, sessions and the stored login token; the last-home record is rewritten so the
+ * move is not reported as a data-directory change. Never moves anything when the new default
+ * already exists, when the legacy default is not a directory, or when the rename fails: the new
+ * default then simply starts empty.
+ */
+export function migrateLegacyDefaultHome(locationRoot: string, userHome = homedir()): void {
+  const legacy = join(userHome, LEGACY_DEFAULT_HOME_NAME)
+  const target = defaultDataDirectory(userHome)
+  try {
+    if (lstatSync(target, { throwIfNoEntry: false }) !== undefined) return
+    if (lstatSync(legacy, { throwIfNoEntry: false })?.isDirectory() !== true) return
+    renameSync(legacy, target)
+    const record = join(locationRoot, LAST_HOME_FILE)
+    try { if (readHome(record) === resolve(legacy)) atomicJson(record, { home: resolve(target) }) } catch { /* Leave the record alone. */ }
+  } catch { /* Leave the legacy directory in place; the new default starts empty. */ }
+}
 
 export function dataDirectoryLocationRoot(packaged: boolean, appData: () => string, packageRoot: string): string {
   return packaged ? join(appData(), 'Travel Buddy', 'home') : join(packageRoot, '.desktop-next', 'home')

@@ -42,7 +42,7 @@ import { DE_ELEVATED_ARGUMENT, ONBOARDING_ARGUMENT, RECOVERY_ARGUMENT, SAFE_ARGU
 import { DESKTOP_RUNTIME_FILE, readInstalledPackageVersion, verifyPackagedRuntimeIdentity } from './runtime-tree.ts'
 import { unpackedPath } from './asar-archive-policy.ts'
 import { createNativePermissions, installMediaPermissions } from './electron-permissions.ts'
-import { DATA_DIRECTORY_VARIABLE, dataDirectoryChange, dataDirectoryLocationFile, dataDirectoryLocationRoot, readDataDirectory, rememberDataDirectory, sameDirectory, validateDataDirectory } from './data-directory.ts'
+import { DATA_DIRECTORY_VARIABLE, dataDirectoryChange, dataDirectoryLocationFile, dataDirectoryLocationRoot, migrateLegacyDefaultHome, readDataDirectory, rememberDataDirectory, sameDirectory, validateDataDirectory } from './data-directory.ts'
 import { assertBackupLocation, backupDirectoryName, copyDataDirectory } from './data-backup.ts'
 import { maskSecrets } from './mask-secrets.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
@@ -84,6 +84,8 @@ const environmentHome = process.env[DATA_DIRECTORY_VARIABLE] || undefined
 // The in-app choice keeps its former Next-owned anchor, whatever the variable says.
 const locationRoot = dataDirectoryLocationRoot(app.isPackaged, () => app.getPath('appData'), root)
 const locationFile = dataDirectoryLocationFile(locationRoot)
+// Bring a former default `~/.dsh-beta` onto the renamed default once, before it is read.
+if (environmentHome === undefined) migrateLegacyDefaultHome(locationRoot)
 const dataLocation = readDataDirectory(locationRoot, environmentHome)
 const home = dataLocation.home
 let dataSource = dataLocation.source

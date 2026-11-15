@@ -12,7 +12,7 @@ export const DESKTOP_RELEASE_IDENTITIES = Object.freeze({
     packageName: 'dsh-plugin-desktop-beta',
     productName: 'DSH Desktop Beta',
     appId: 'ai.deepseek.dsh.desktop.beta',
-    homeDirectoryName: '.dsh-beta',
+    homeDirectoryName: '.travel-buddy',
   }),
 })
 
