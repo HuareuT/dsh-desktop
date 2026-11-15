@@ -1831,7 +1831,7 @@ __metadata:
 
 "@deepseek-ai/dsh-api-workspace-controller@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-api-workspace-controller-0.2.2-rc.1.tgz::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.2.2-rc.1
-  resolution: "@deepseek-ai/dsh-api-workspace-controller@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-api-workspace-controller-0.2.2-rc.1.tgz#vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-api-workspace-controller-0.2.2-rc.1.tgz::hash=8fea04&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-api-workspace-controller@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-api-workspace-controller-0.2.2-rc.1.tgz#vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-api-workspace-controller-0.2.2-rc.1.tgz::hash=e633ce&locator=deepseek-harness-desktop%40workspace%3A."
   dependencies:
     "@deepseek-ai/dsh-deque": "npm:0.2.2-rc.1"
     "@deepseek-ai/dsh-native-command": "npm:0.2.2-rc.1"
@@ -1846,7 +1846,7 @@ __metadata:
     "@deepseek-ai/dsh-storage-domain": 0.2.2-rc.1
     "@deepseek-ai/dsh-typert-protocol": 0.2.2-rc.1
     "@deepseek-ai/dsh-workspace": 0.2.2-rc.1
-  checksum: 10c0/f6ba5616778604e888a8daafd87154227af95e712761b0f4f74bf0830ce811d9858e3379079bc4dd6a89eb2d7b4796957ae11152fdc422864631441847544d2c
+  checksum: 10c0/af140c5dd52f939e1d45e59fcf9f4172fad574240a0bd2a4e027a692eaaab12a26890480eb5f98be0fd22f7fc43ad56eb25ded8cec6f4956849abd233eb56329
   languageName: node
   linkType: hard
 
