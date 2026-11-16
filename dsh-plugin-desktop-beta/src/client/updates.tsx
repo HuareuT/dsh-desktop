@@ -11,7 +11,7 @@ export function NextUpdateSettings({ state, language, run }: { state: DesktopSta
   const action = updateAction(update)
   return <section className="dshDesktopSettingsGroup" data-next-updates>
     <h3>{t('应用更新', 'App updates')}</h3>
-    <p className="dshDesktopSettingsHint">DSH Desktop Beta · {state.version}</p>
+    <p className="dshDesktopSettingsHint">Travel Buddy · {state.version}</p>
     <p role={update.phase === 'error' ? 'alert' : 'status'}>{updateLabel(update, language)}</p>
     {update.phase === 'ready' && <p className="dshDesktopSettingsHint">{t('安装时会重启应用并中断正在运行的任务，Profile 和会话会保留。', 'Installation restarts the app and interrupts running tasks. Profiles and sessions are retained.')}</p>}
     {update.phase === 'downloading' && <progress style={{ width: '100%' }} aria-label={t('更新下载进度', 'Update download progress')} max={update.total ?? 1} value={update.total ? update.received ?? 0 : undefined} />}

@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => { console.log('T8 DOMContent
 
 function App() {
   const adapter = useMemo(() => window.desktopNext ? new NextSettingsAdapter(window.desktopNext) : undefined, [])
-  if (!adapter) return <Alert variant="destructive"><AlertDescription>Desktop controls could not load. Restart DSH Desktop Beta.</AlertDescription></Alert>
+  if (!adapter) return <Alert variant="destructive"><AlertDescription>Desktop controls could not load. Restart Travel Buddy.</AlertDescription></Alert>
   return <NativePages adapter={adapter} />
 }
 

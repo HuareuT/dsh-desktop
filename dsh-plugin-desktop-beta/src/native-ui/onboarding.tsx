@@ -10,7 +10,7 @@ import type { DesktopBridge, DesktopPreferences, DesktopState } from '../desktop
 import { installPluginControlsStyles } from '../client/plugin-controls-styles.ts'
 import { OFFICIAL_PLUGIN_INDEX } from '../upstream-family-labels.ts'
 import './onboarding.css'
-import whaleArtwork from '../../build/app-icon.icon/Assets/DeepSeek.svg'
+import travelBuddyArtwork from '../../build/app-icon.icon/Assets/TravelBuddy.svg'
 // Reuse the portable device family artwork and composition from the AA landing page.
 import phoneArtwork from './assets/agents-anywhere-phone.webp'
 import tabletArtwork from './assets/agents-anywhere-tablet.webp'
@@ -43,7 +43,7 @@ export function Onboarding({ state, locale, bridge }: { state: Pick<DesktopState
   const disabled = busy || transitioning
   const steps = [t('欢迎', 'Welcome'), t('插件市场', 'Plugin market'), t('远程控制', 'Remote control'), t('Computer Use（Next）', 'Computer Use (Next)'), t('浏览器访问', 'Browser access'), t('恢复模式', 'Recovery')]
   const lastPage = steps.length - 1
-  const titles = [t('欢迎使用\nDSH Desktop Beta', 'Welcome to\nDSH Desktop Beta'), t('用插件，\n拓展更多可能。', 'Make room\nfor more possibilities.'), t('离开电脑，\n也能继续。', 'Keep going.\nAway from your desk.'), t('让 AI 帮你\n操作电脑。', 'Let AI work\non your desktop.'), t('在浏览器中，\n也能打开。', 'Open in a browser,\nwhen you need to.'), t('遇到问题，\n从这里恢复。', 'A way back,\nwhen you need it.')]
+  const titles = [t('欢迎使用\nTravel Buddy', 'Welcome to\nTravel Buddy'), t('用插件，\n拓展更多可能。', 'Make room\nfor more possibilities.'), t('离开电脑，\n也能继续。', 'Keep going.\nAway from your desk.'), t('让 AI 帮你\n操作电脑。', 'Let AI work\non your desktop.'), t('在浏览器中，\n也能打开。', 'Open in a browser,\nwhen you need to.'), t('遇到问题，\n从这里恢复。', 'A way back,\nwhen you need it.')]
   const descriptions = [
     t(`为 Profile「${state.selected}」选好常用功能。\n几步设置，就可以开始。`, `Set up the essentials for Profile “${state.selected}”.\nA few choices, then you’re ready to go.`),
     t(`选择一个插件市场，浏览和安装社区插件；\n或配置${OFFICIAL_PLUGIN_INDEX.title.zh}。\n也可以暂不开启，以后在插件页面调整。`, `Choose a market to browse and install community plugins,\nor configure "${OFFICIAL_PLUGIN_INDEX.title.en}".\nYou can also leave it off and decide later in Plugins.`),
@@ -95,7 +95,7 @@ export function Onboarding({ state, locale, bridge }: { state: Pick<DesktopState
   }
 
   const builtinMarkets = [
-    { value: 'community', title: 'dsh-community-market', badge: 'Beta', detail: t('DSH Desktop 内置的开放插件市场，支持添加和选择自定义插件数据源。', 'DSH Desktop’s open plugin market, with support for custom plugin sources.') },
+    { value: 'community', title: 'dsh-community-market', badge: 'Beta', detail: t('Travel Buddy 内置的开放插件市场，支持添加和选择自定义插件数据源。', 'Travel Buddy’s open plugin market, with support for custom plugin sources.') },
     { value: 'dsh', title: 'dsh-market', detail: t('社区热门的插件市场，数据来自 awesome-dsh-plugin。', 'A popular community market, powered by awesome-dsh-plugin.') },
   ] as const
   const exposures = [
@@ -141,7 +141,7 @@ export function Onboarding({ state, locale, bridge }: { state: Pick<DesktopState
         </section>
         <aside className="next-onboarding-panel next-onboarding-reveal" aria-label={steps[page]}>
           {page === 0 && <div className="next-onboarding-wordmark" aria-hidden="true">
-            <span className="next-onboarding-whale" style={{ maskImage: `url("${whaleArtwork}")` }} /><span>BETA</span>
+            <span className="next-onboarding-whale" style={{ maskImage: `url("${travelBuddyArtwork}")` }} /><span>BETA</span>
           </div>}
           {page === 1 && <div className="grid w-full gap-3" aria-label={t('插件市场', 'Plugin market')}>
             <RadioGroup aria-label={t('内置插件市场', 'Built-in plugin markets')} className="next-onboarding-choice-group" value={market} disabled={disabled || !marketEnabled} onValueChange={value => { if (marketEnabled) setMarket(value as Market) }}>

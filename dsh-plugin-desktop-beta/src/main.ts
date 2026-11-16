@@ -454,6 +454,14 @@ function createWindow(preload: string, primary = false): BrowserWindow {
     // `DesktopBrowserGuests` issued the lease, and the guest itself never gets the tag.
     webPreferences: { preload: join(root, 'lib', preload), contextIsolation: true, sandbox: true, nodeIntegration: false, webviewTag: primary },
   })
+  // Travel Buddy: the vendored web app stamps its own suffix ("… — DeepSeek Harness") onto
+  // document.title; rewrite it in the shell so the window caption stays on-brand.
+  if (primary) {
+    window.on('page-title-updated', (event, title) => {
+      event.preventDefault()
+      window.setTitle(title.replaceAll('DeepSeek Harness', 'Travel Buddy'))
+    })
+  }
   let intervalStart = Date.now()
   let count = 0
   let failureCount = 0
