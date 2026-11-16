@@ -3058,10 +3058,10 @@ __metadata:
 
 "@deepseek-ai/dsh-client-ui-permission-presets@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-permission-presets-0.2.2-rc.1.tgz::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.2.2-rc.1
-  resolution: "@deepseek-ai/dsh-client-ui-permission-presets@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-permission-presets-0.2.2-rc.1.tgz#vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-permission-presets-0.2.2-rc.1.tgz::hash=929887&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-client-ui-permission-presets@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-permission-presets-0.2.2-rc.1.tgz#vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-permission-presets-0.2.2-rc.1.tgz::hash=dc88bc&locator=deepseek-harness-desktop%40workspace%3A."
   peerDependencies:
     "@deepseek-ai/cordis": ~4.1.0
-  checksum: 10c0/1533a1ea189709bce07a24c106aafdffa1d1f6cc44515c89490f51f6bc831c2645514ed5dbba325f2b4cb2858ab21326e233f7170f73176f42c8aa7d5c368a90
+  checksum: 10c0/2176cf9f50073c10cc89656a816373260add87230a12f529f6b0735922154c8208609457c917bed1119f51aec2f416e75c5f716b591cf6b2e9db08736d8f0483
   languageName: node
   linkType: hard
 
@@ -3886,10 +3886,10 @@ __metadata:
 
 "@deepseek-ai/dsh-client-ui-workspace@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-workspace-0.2.2-rc.1.tgz::locator=deepseek-harness-desktop%40workspace%3A.":
   version: 0.2.2-rc.1
-  resolution: "@deepseek-ai/dsh-client-ui-workspace@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-workspace-0.2.2-rc.1.tgz#vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-workspace-0.2.2-rc.1.tgz::hash=dcf071&locator=deepseek-harness-desktop%40workspace%3A."
+  resolution: "@deepseek-ai/dsh-client-ui-workspace@file:vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-workspace-0.2.2-rc.1.tgz#vendor/dsh-runtime/0.2.2-rc.1/deepseek-ai-dsh-client-ui-workspace-0.2.2-rc.1.tgz::hash=5a9742&locator=deepseek-harness-desktop%40workspace%3A."
   peerDependencies:
     "@deepseek-ai/cordis": ~4.1.0
-  checksum: 10c0/487f0a2aa029ccd73d86c02ed046cb41c0ea7878fa41eb3e2c178a937229cc44579b0084f9c5457e2c157f7a7ed6f6a37316a6e0291a8cdcb64a7122147da30a
+  checksum: 10c0/92672a041c2a7dd33df6c9a4b3c90b5595bbfb082e1db21e6287dd7c544a185294d0102db392a6adce91d50a30df361c791df9c69df671f1c27d1094d811157b
   languageName: node
   linkType: hard
 
