@@ -824,6 +824,14 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
       if (onboarding) { openControls('onboarding'); return }
       shellWindow?.hide()
       if (!travelHostStarted) { travelHostStarted = true; void runtime.start().catch(() => {}) }
+      else {
+        // The host composed under the previous session's role env (TRAVEL_ENABLE_ADVANCED
+        // is read at composition time). Re-login restarts it so a role change takes
+        // effect without an app restart — same mechanism as profile feature changes.
+        runtime.busy = true; native.refresh()
+        try { await runtime.restart() } catch (error) { runtime.diagnostics.append(String(error), 'error') }
+        finally { runtime.busy = false; native.refresh() }
+      }
       // A live main window still carries the previous session's token: reload it with the fresh one.
       if (mainWindow && !mainWindow.isDestroyed()) void loadMainDocument(mainWindow, 'reload').catch(() => {})
       openMain()
@@ -838,7 +846,8 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     travelUserRole = undefined
     travelApplyRoleEnv()
     runtime.diagnostics.append('Travel auth: user signed out', 'info')
-    // Keep the host alive (PoC); the gate is the window session. M1: full runtime stop/restart.
+    // The host stays alive for a fast next-login; that login restarts it whenever a
+    // session existed before, so the role env is always re-composed on entry.
     mainWindow?.hide()
     openControls('login')
     return
