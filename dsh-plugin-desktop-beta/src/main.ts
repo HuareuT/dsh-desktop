@@ -154,11 +154,15 @@ let travelHostStarted = false
 /** T12.5: cloud-verified plugin grants; vendored web-app bundles are gated per plugin
  * through host env vars the tb-profile profile patch reads at composition time:
  *   ui-plugin-manager ← TRAVEL_ENABLE_PLUGIN_MANAGER, ui-schedule ← TRAVEL_ENABLE_SCHEDULE.
+ * T12.11: vendored super-admin-only settings panels (内置插件/Agent预设) additionally gate
+ * on TRAVEL_ENABLE_SUPER_PANELS from the cloud role.
  * The host child inherits this shell's environment (createHost spreads process.env). */
 let travelPlugins: string[] = []
+let travelUserRole: string | undefined
 function travelApplyRoleEnv(): void {
   process.env.TRAVEL_ENABLE_PLUGIN_MANAGER = travelPlugins.includes('ui-plugin-manager') ? '1' : '0'
   process.env.TRAVEL_ENABLE_SCHEDULE = travelPlugins.includes('ui-schedule') ? '1' : '0'
+  process.env.TRAVEL_ENABLE_SUPER_PANELS = travelUserRole === 'super_admin' ? '1' : '0'
 }
 const TRAVEL_AUTH_BASE = 'http://127.0.0.1:8790'
 const TRAVEL_SESSION_FILE = join(home, '.travel-session.json')
@@ -180,6 +184,8 @@ async function travelVerifyStoredSession(): Promise<void> {
       travelLoggedIn = true; travelToken = stored.token
       const granted = body.plugins
       travelPlugins = Array.isArray(granted) ? granted.map(String) : []
+      travelUserRole = typeof body.user === 'object' && body.user !== null && typeof (body.user as Record<string, unknown>).role === 'string'
+        ? (body.user as Record<string, unknown>).role as string : undefined
       travelApplyRoleEnv()
     }
     else runtime.diagnostics.append('Travel auth: stored session rejected', 'info')
@@ -203,6 +209,8 @@ async function travelPerformLogin(username: string, password: string): Promise<v
   travelToken = result.body.token
   const granted = result.body.plugins
   travelPlugins = Array.isArray(granted) ? granted.map(String) : []
+  travelUserRole = typeof result.body.user === 'object' && result.body.user !== null && typeof (result.body.user as Record<string, unknown>).role === 'string'
+    ? (result.body.user as Record<string, unknown>).role as string : undefined
   travelApplyRoleEnv()
   try { writeFileSync(TRAVEL_SESSION_FILE, JSON.stringify({ token: result.body.token, user: loginUsername }, undefined, 2)) } catch { /* best effort */ }
   runtime.diagnostics.append(`Travel auth: user ${username} signed in`, 'info')
@@ -842,6 +850,7 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     travelLoggedIn = false
     travelToken = undefined
     travelPlugins = []
+    travelUserRole = undefined
     travelApplyRoleEnv()
     runtime.diagnostics.append('Travel auth: user signed out', 'info')
     // The host stays alive for a fast next-login; that login restarts it whenever a

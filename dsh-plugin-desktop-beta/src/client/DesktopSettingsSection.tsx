@@ -16,6 +16,7 @@ import {
   desktopBrowserAccessAvailable,
   desktopBrowserAccessEnabled,
 } from '../../../dsh-plugin-desktop/src/desktop-network.ts'
+import { travelSharedVerify } from './travel-auth.ts'
 
 /** Browser view of the Host `dsh-desktop` settings namespace. */
 export interface DesktopShellSettings {
@@ -473,18 +474,14 @@ export function DesktopSettingsSection({
 
   // Travel Buddy: profile management is an operator-only surface. The section stays
   // hidden unless the signed-in account verifies as super_admin; any error, missing
-  // token, or unreachable backend keeps it hidden (fail-closed).
+  // token, or unreachable backend keeps it hidden (fail-closed). Uses the shared
+  // window-cached verify so the whole page issues one request per load.
   const [profileManageable, setProfileManageable] = useState(false)
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get('travel_token')
-    if (!token) return
     let alive = true
-    fetch(`http://127.0.0.1:8790/api/verify?token=${encodeURIComponent(token)}`)
-      .then(res => (res.ok ? res.json() : undefined))
-      .then((data: { user?: { role?: string } } | undefined) => {
-        if (alive && data?.user?.role === 'super_admin') setProfileManageable(true)
-      })
-      .catch(() => {})
+    void travelSharedVerify().then(data => {
+      if (alive && data?.user?.role === 'super_admin') setProfileManageable(true)
+    })
     return () => { alive = false }
   }, [])
 

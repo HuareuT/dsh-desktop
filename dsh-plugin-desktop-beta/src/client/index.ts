@@ -20,6 +20,7 @@ import { registerComputerUseCommandUi } from './computer-use-command-ui.tsx'
 import { installOfficialComputerUseStyles, registerDesktopSettingsIcon } from './upstream-family.ts'
 import { desktopDirectoryPicker, registerDesktopDirectoryPicker } from './directory-picker.ts'
 import { SettingsRequests } from './settings-requests.tsx'
+import { travelIsSuperAdmin } from './travel-auth.ts'
 import type { DesktopSettingsLocaleKey } from '../../../dsh-plugin-desktop/src/client/desktop-settings-locales.ts'
 import { installRendererRecovery } from './renderer-recovery.ts'
 
@@ -72,11 +73,16 @@ export function apply(ctx: Context): void {
     const t = ctx.locale.bind('desktop-next')
     // The settings shell shows our display icon for this section ID: through its icon slot where the release
     // offers one, otherwise through the shell's Yarn patch, which maps the ID itself.
-    ctx.slots.inject('settings.section', () => ctx.slots.register({
-      name: 'settings.section', id: 'desktop', order: 100, locale: 'desktop-next', label: () => t('settings'),
-      inject: () => ({ adapter, openPlugins: () => ctx.layout.selectPanel('plugins' as MainPanelId) }),
-    }, DesktopSettings))
-    registerDesktopSettingsIcon?.(ctx, 'desktop')
+    // Travel Buddy: the whole Desktop settings section is super-admin-only (mechanism A,
+    // fail-closed — register nothing when verification fails).
+    void travelIsSuperAdmin().then(superAdmin => {
+      if (!superAdmin) return
+      ctx.slots.inject('settings.section', () => ctx.slots.register({
+        name: 'settings.section', id: 'desktop', order: 100, locale: 'desktop-next', label: () => t('settings'),
+        inject: () => ({ adapter, openPlugins: () => ctx.layout.selectPanel('plugins' as MainPanelId) }),
+      }, DesktopSettings))
+      registerDesktopSettingsIcon?.(ctx, 'desktop')
+    })
     ctx.slots.inject('settings.action', () => ctx.slots.register({
       name: 'settings.action', id: 'desktop-native-actions', order: 1, locale: 'desktop-next', inject: () => ({ adapter }),
     }, SettingsActions))

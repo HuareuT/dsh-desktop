@@ -1,5 +1,5 @@
 /** Mount the existing Desktop page and controls against Next's native adapter. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { DesktopSettingsSection, DesktopSettingsSelect, DesktopSettingsToggleRow } from './DesktopSettingsSection.tsx'
 import { DesktopNativeActions } from '../../../dsh-plugin-desktop/src/client/DesktopNativeActions.tsx'
@@ -9,6 +9,7 @@ import { NextSettingsAdapter } from './settings-adapter.ts'
 import { DesktopPermissionsSection } from './permissions.tsx'
 import { useDesktopState } from './desktop-state.ts'
 import { NextUpdateSettings } from './updates.tsx'
+import { travelIsSuperAdmin } from './travel-auth.ts'
 
 export function desktopTranslate(language: string): (key: string) => string {
   const copy = language.startsWith('zh') ? zh : en
@@ -50,7 +51,18 @@ export function NextDesktopSettings({ adapter, language, onOpenPlugins }: { adap
 
 export function NextDesktopActions({ adapter, language }: { adapter: NextSettingsAdapter; language: string }) {
   const state = useDesktopState(adapter)
-  return <DesktopNativeActions api={adapter.api} t={desktopTranslate(language)} placement="settings" terminalAvailable={state?.platform === 'darwin' || state?.platform === 'win32'} />
+  // Travel Buddy: terminal + diagnostics export are super-admin-only; the restart
+  // menu stays for everyone. exportDiagnostics is omitted from the api object for
+  // non-super users (the shared component hides absent capabilities) and the
+  // terminal button follows terminalAvailable.
+  const [isSuper, setIsSuper] = useState(false)
+  useEffect(() => {
+    let alive = true
+    void travelIsSuperAdmin().then(value => { if (alive) setIsSuper(value) })
+    return () => { alive = false }
+  }, [])
+  const api = isSuper ? adapter.api : { ...adapter.api, exportDiagnostics: undefined }
+  return <DesktopNativeActions api={api} t={desktopTranslate(language)} placement="settings" terminalAvailable={isSuper && (state?.platform === 'darwin' || state?.platform === 'win32')} />
 }
 
 function NextBrowserActions({ adapter, state, language }: { adapter: NextSettingsAdapter; state: DesktopState; language: string }) {
