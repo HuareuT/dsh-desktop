@@ -151,16 +151,14 @@ let travelLoginBusy = false
 let travelToken: string | undefined
 /** Set once runtime.start() has been issued, so a post-logout re-login reuses the live host. */
 let travelHostStarted = false
-/** T12.4: role from the cloud session; super_admin unlocks advanced host bundles via env. */
-let travelUserRole: string | undefined
-/**
- * The host child inherits this shell's environment (createHost spreads process.env),
- * and the travel-demo profile patch gates ui-schedule/ui-plugin-manager on
- * `disabled: !!js "process.env.TRAVEL_ENABLE_ADVANCED !== '1'"`. Role changes need
- * a host restart to take effect (logout stops reusing the live host in M1).
- */
+/** T12.5: cloud-verified plugin grants; vendored web-app bundles are gated per plugin
+ * through host env vars the travel-demo profile patch reads at composition time:
+ *   ui-plugin-manager ← TRAVEL_ENABLE_PLUGIN_MANAGER, ui-schedule ← TRAVEL_ENABLE_SCHEDULE.
+ * The host child inherits this shell's environment (createHost spreads process.env). */
+let travelPlugins: string[] = []
 function travelApplyRoleEnv(): void {
-  process.env.TRAVEL_ENABLE_ADVANCED = travelUserRole === 'super_admin' ? '1' : '0'
+  process.env.TRAVEL_ENABLE_PLUGIN_MANAGER = travelPlugins.includes('ui-plugin-manager') ? '1' : '0'
+  process.env.TRAVEL_ENABLE_SCHEDULE = travelPlugins.includes('ui-schedule') ? '1' : '0'
 }
 const TRAVEL_AUTH_BASE = 'http://127.0.0.1:8790'
 const TRAVEL_SESSION_FILE = join(home, '.travel-session.json')
@@ -180,8 +178,8 @@ async function travelVerifyStoredSession(): Promise<void> {
     const { status, body } = await travelRequest(`/api/verify?token=${encodeURIComponent(stored.token)}`, { method: 'GET' })
     if (status === 200 && body?.ok === true) {
       travelLoggedIn = true; travelToken = stored.token
-      const role = (body.user as Record<string, unknown> | undefined)?.role
-      if (typeof role === 'string') travelUserRole = role
+      const granted = body.plugins
+      travelPlugins = Array.isArray(granted) ? granted.map(String) : []
       travelApplyRoleEnv()
     }
     else runtime.diagnostics.append('Travel auth: stored session rejected', 'info')
@@ -203,8 +201,8 @@ async function travelPerformLogin(username: string, password: string): Promise<v
   const loginUsername = typeof result.body.user === 'object' && result.body.user !== null && typeof (result.body.user as Record<string, unknown>).username === 'string'
     ? (result.body.user as Record<string, unknown>).username : username
   travelToken = result.body.token
-  const loginUser = result.body.user as Record<string, unknown> | undefined
-  if (typeof loginUser?.role === 'string') travelUserRole = loginUser.role
+  const granted = result.body.plugins
+  travelPlugins = Array.isArray(granted) ? granted.map(String) : []
   travelApplyRoleEnv()
   try { writeFileSync(TRAVEL_SESSION_FILE, JSON.stringify({ token: result.body.token, user: loginUsername }, undefined, 2)) } catch { /* best effort */ }
   runtime.diagnostics.append(`Travel auth: user ${username} signed in`, 'info')
@@ -825,8 +823,8 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
       shellWindow?.hide()
       if (!travelHostStarted) { travelHostStarted = true; void runtime.start().catch(() => {}) }
       else {
-        // The host composed under the previous session's role env (TRAVEL_ENABLE_ADVANCED
-        // is read at composition time). Re-login restarts it so a role change takes
+        // The host composed under the previous session's grants env (TRAVEL_ENABLE_*
+        // is read at composition time). Re-login restarts it so a grants change takes
         // effect without an app restart — same mechanism as profile feature changes.
         runtime.busy = true; native.refresh()
         try { await runtime.restart() } catch (error) { runtime.diagnostics.append(String(error), 'error') }
@@ -843,7 +841,7 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     try { rmSync(TRAVEL_SESSION_FILE, { force: true }) } catch { /* best-effort local wipe */ }
     travelLoggedIn = false
     travelToken = undefined
-    travelUserRole = undefined
+    travelPlugins = []
     travelApplyRoleEnv()
     runtime.diagnostics.append('Travel auth: user signed out', 'info')
     // The host stays alive for a fast next-login; that login restarts it whenever a
