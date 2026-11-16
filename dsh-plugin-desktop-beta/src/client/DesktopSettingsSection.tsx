@@ -471,6 +471,23 @@ export function DesktopSettingsSection({
   const [updateCheck, setUpdateCheck] = useState<'idle' | 'checking' | 'failed'>('idle')
   const lanPoll = useRef<AbortController>()
 
+  // Travel Buddy: profile management is an operator-only surface. The section stays
+  // hidden unless the signed-in account verifies as super_admin; any error, missing
+  // token, or unreachable backend keeps it hidden (fail-closed).
+  const [profileManageable, setProfileManageable] = useState(false)
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('travel_token')
+    if (!token) return
+    let alive = true
+    fetch(`http://127.0.0.1:8790/api/verify?token=${encodeURIComponent(token)}`)
+      .then(res => (res.ok ? res.json() : undefined))
+      .then((data: { user?: { role?: string } } | undefined) => {
+        if (alive && data?.user?.role === 'super_admin') setProfileManageable(true)
+      })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+
   const publishView = useCallback((next: DesktopSettingsView) => {
     setView(current => JSON.stringify(current) === JSON.stringify(next) ? current : next)
   }, [])
@@ -695,6 +712,7 @@ export function DesktopSettingsSection({
         </p>
       )}
 
+      {profileManageable && (
       <section className="dshDesktopSettingsGroup" aria-labelledby="dsh-desktop-profile-title">
         <div>
           <h3 id="dsh-desktop-profile-title">{t('profileTitle')}</h3>
@@ -787,6 +805,7 @@ export function DesktopSettingsSection({
           </>
         )}
       </section>
+      )}
 
       {capabilities?.pluginSelectors !== false && <>
       <section className="dshDesktopSettingsGroup" aria-labelledby="dsh-desktop-market-title">

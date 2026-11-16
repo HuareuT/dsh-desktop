@@ -152,7 +152,7 @@ let travelToken: string | undefined
 /** Set once runtime.start() has been issued, so a post-logout re-login reuses the live host. */
 let travelHostStarted = false
 /** T12.5: cloud-verified plugin grants; vendored web-app bundles are gated per plugin
- * through host env vars the travel-demo profile patch reads at composition time:
+ * through host env vars the tb-profile profile patch reads at composition time:
  *   ui-plugin-manager ← TRAVEL_ENABLE_PLUGIN_MANAGER, ui-schedule ← TRAVEL_ENABLE_SCHEDULE.
  * The host child inherits this shell's environment (createHost spreads process.env). */
 let travelPlugins: string[] = []
