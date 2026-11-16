@@ -317,7 +317,16 @@ export class DesktopHostProcess {
     child.stderr?.on('data', (chunk: string) => { this.stderr = (this.stderr + chunk).slice(-MAX_HOST_DIAGNOSTIC_CHARS); this.onLog?.(chunk, 'stderr', child.pid) })
     child.stdout?.setEncoding('utf8')
     child.stdout?.on('data', (chunk: string) => { this.onLog?.(chunk, 'stdout', child.pid) })
-    child.stdout?.pipe(process.stdout)
+    // Travel Buddy patch: the upstream blind `child.stdout?.pipe(process.stdout)` crashes the
+    // Electron main process with EPIPE once its own stdout peer is gone — packaged Windows
+    // builds have no console, and dev launches survive their parent shell. Mirror host output
+    // only while our stdout is healthy and never let a dead sink take the app down.
+    process.stdout?.on?.('error', () => { /* a vanished parent console is not fatal */ })
+    child.stdout?.on('data', (chunk: string) => {
+      try {
+        if (process.stdout?.writable === true && !process.stdout.destroyed) process.stdout.write(chunk)
+      } catch { /* parent console went away mid-write: drop the mirror output */ }
+    })
     child.on('message', (message: unknown) => {
       // Like memory readings, operation evidence is observational and never reaches control handling.
       try { if ((this.observer?.operation ?? isOperationEvidence)?.(message) === true) return } catch { /* A failing observer leaves the message to the events below. */ }
