@@ -151,24 +151,39 @@ let travelLoginBusy = false
 let travelToken: string | undefined
 /** Set once runtime.start() has been issued, so a post-logout re-login reuses the live host. */
 let travelHostStarted = false
-/** T12.5: cloud-verified plugin grants; vendored web-app bundles are gated per plugin
- * through host env vars the tb-profile profile patch reads at composition time:
- *   ui-plugin-manager ← TRAVEL_ENABLE_PLUGIN_MANAGER, ui-schedule ← TRAVEL_ENABLE_SCHEDULE.
- * T12.11: vendored super-admin-only settings panels (内置插件/Agent预设) additionally gate
- * on TRAVEL_ENABLE_SUPER_PANELS from the cloud role.
+/** T13.7: cloud-driven env grants, replacing the hardcoded per-plugin mappings.
+ * The login/verify responses carry env_grants: every registry env_key mapped to '1'/'0'
+ * for this user (backend envGrantsFor, fail-closed on api_enabled=0). We mirror the map
+ * into process.env before host composition so the profile patch gate lines
+ * (`disabled: !!js "process.env.TRAVEL_ENABLE_X !== '1'"`) stay backend-driven — adding
+ * a gated surface is a registry edit, not a desktop release.
+ * Fail-closed: an old/missing backend leaves the map empty → all gates shut.
  * The host child inherits this shell's environment (createHost spreads process.env). */
-let travelPlugins: string[] = []
-let travelUserRole: string | undefined
+let travelEnvGrants: Record<string, string> = {}
+const travelAppliedEnvKeys = new Set<string>()
 function travelApplyRoleEnv(): void {
-  process.env.TRAVEL_ENABLE_PLUGIN_MANAGER = travelPlugins.includes('ui-plugin-manager') ? '1' : '0'
-  process.env.TRAVEL_ENABLE_SCHEDULE = travelPlugins.includes('ui-schedule') ? '1' : '0'
-  process.env.TRAVEL_ENABLE_SUPER_PANELS = travelUserRole === 'super_admin' ? '1' : '0'
+  for (const key of travelAppliedEnvKeys) delete process.env[key]
+  travelAppliedEnvKeys.clear()
+  for (const [key, value] of Object.entries(travelEnvGrants)) {
+    process.env[key] = value
+    travelAppliedEnvKeys.add(key)
+  }
+}
+function travelReadEnvGrants(body: Record<string, unknown> | null): void {
+  const grants = body?.env_grants
+  const out: Record<string, string> = {}
+  if (grants !== null && typeof grants === 'object' && !Array.isArray(grants)) {
+    for (const [key, value] of Object.entries(grants as Record<string, unknown>)) {
+      if (typeof key === 'string' && /^TRAVEL_ENABLE_[A-Z0-9_]{1,40}$/.test(key) && (value === '1' || value === '0')) out[key] = value
+    }
+  }
+  travelEnvGrants = out
 }
 const TRAVEL_AUTH_BASE = 'https://work.tipsmuseum.com'
 const TRAVEL_SESSION_FILE = join(home, '.travel-session.json')
 type TravelSession = { token: string; user: string }
 async function travelRequest(path: string, init: RequestInit): Promise<{ status: number; body: Record<string, unknown> | null }> {
-  const response = await fetch(`${TRAVEL_AUTH_BASE}${path}`, { ...init, signal: AbortSignal.timeout(4000) })
+  const response = await fetch(`${TRAVEL_AUTH_BASE}${path}`, { ...init, signal: AbortSignal.timeout(10_000) })
   let body: Record<string, unknown> | null = null
   try { body = await response.json() as Record<string, unknown> } catch { /* non-JSON error body */ }
   return { status: response.status, body }
@@ -182,11 +197,13 @@ async function travelVerifyStoredSession(): Promise<void> {
     const { status, body } = await travelRequest(`/api/verify?token=${encodeURIComponent(stored.token)}`, { method: 'GET' })
     if (status === 200 && body?.ok === true) {
       travelLoggedIn = true; travelToken = stored.token
-      const granted = body.plugins
-      travelPlugins = Array.isArray(granted) ? granted.map(String) : []
-      travelUserRole = typeof body.user === 'object' && body.user !== null && typeof (body.user as Record<string, unknown>).role === 'string'
-        ? (body.user as Record<string, unknown>).role as string : undefined
+      // Host-side plugin guards (call-time entitlement checks) need the session
+      // token; the Host child inherits this shell's environment.
+      process.env.TRAVEL_TOKEN = stored.token
+      travelReadEnvGrants(body)
       travelApplyRoleEnv()
+      // W16 trace: proves env grants were applied to this shell before Host composition.
+      runtime.diagnostics.append(`Travel auth: stored session restored (env grants: ${Object.keys(travelEnvGrants).length})`, 'info')
     }
     else runtime.diagnostics.append('Travel auth: stored session rejected', 'info')
   } catch (error) {
@@ -207,10 +224,8 @@ async function travelPerformLogin(username: string, password: string): Promise<v
   const loginUsername = typeof result.body.user === 'object' && result.body.user !== null && typeof (result.body.user as Record<string, unknown>).username === 'string'
     ? (result.body.user as Record<string, unknown>).username : username
   travelToken = result.body.token
-  const granted = result.body.plugins
-  travelPlugins = Array.isArray(granted) ? granted.map(String) : []
-  travelUserRole = typeof result.body.user === 'object' && result.body.user !== null && typeof (result.body.user as Record<string, unknown>).role === 'string'
-    ? (result.body.user as Record<string, unknown>).role as string : undefined
+  process.env.TRAVEL_TOKEN = result.body.token
+  travelReadEnvGrants(result.body)
   travelApplyRoleEnv()
   try { writeFileSync(TRAVEL_SESSION_FILE, JSON.stringify({ token: result.body.token, user: loginUsername }, undefined, 2)) } catch { /* best effort */ }
   runtime.diagnostics.append(`Travel auth: user ${username} signed in`, 'info')
@@ -849,8 +864,8 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     try { rmSync(TRAVEL_SESSION_FILE, { force: true }) } catch { /* best-effort local wipe */ }
     travelLoggedIn = false
     travelToken = undefined
-    travelPlugins = []
-    travelUserRole = undefined
+    delete process.env.TRAVEL_TOKEN
+    travelEnvGrants = {}
     travelApplyRoleEnv()
     runtime.diagnostics.append('Travel auth: user signed out', 'info')
     // The host stays alive for a fast next-login; that login restarts it whenever a
@@ -1222,6 +1237,9 @@ function rememberLaunchDirectory(directory: string): void {
  * @returns false when this process ends to reopen the last directory or to quit.
  */
 async function confirmDataDirectory(): Promise<boolean> {
+  // An explicit DSH_DESKTOP_NEXT_HOME is operator intent, not a silent switch: never confirm,
+  // and never touch the shared last-launch record, so side-by-side homes cannot fight over it.
+  if (environmentHome !== undefined) return true
   if (safeModeRequested || dataLocation.error) return true
   const change = dataDirectoryChange(locationRoot, home, environmentHome)
   if (change === undefined) { rememberLaunchDirectory(home); return true }
