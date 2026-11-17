@@ -2,7 +2,7 @@
 import { installDesktopShortcuts } from './keyboard.ts'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { access, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { freemem, totalmem } from 'node:os'
@@ -30,7 +30,7 @@ import { createLanHttpsCertificate, lanHttpsCertificateDiagnostic } from './lan-
 import { desktopTerminalStateDirectory, openDesktopTerminal } from './desktop-terminal.ts'
 import { dshCommandArguments, dshCommandInvocation } from './dsh-command.ts'
 import { createPackageRunner } from './extensions.ts'
-import { bundledPnpmEntry } from './bundled-pnpm.ts'
+import { bundledPnpmEntry, bundledPnpmInvocation } from './bundled-pnpm.ts'
 import { applyDesktopPackageManagerPolicy } from './pnpm-policy.ts'
 import { auxiliaryWindowChromeOptions, auxiliaryWindowHasCustomFrame } from '../../dsh-plugin-desktop/src/auxiliary-window-options.ts'
 import { cleanupDisposableTree } from '../../dsh-plugin-desktop/src/disposable-tree.ts'
@@ -238,11 +238,97 @@ function travelMainUrl(): string {
   return travelToken ? `${APP_URL}?travel_token=${encodeURIComponent(travelToken)}` : APP_URL
 }
 /** The gated startup chain: recovery > login > onboarding > start. */
+/**
+ * T16 built-in pipeline: plugins flagged "built-in" ship inside the app package
+ * (builtin-plugins/ + builtin-plugins.json). Before the Host first starts, sync the
+ * active profile to the manifest: copy each tgz into the home's builtin-cache and
+ * add/upgrade its file: dependency + bundle row; remove entries that left the
+ * manifest. No manifest or no drift → zero work, no startup delay. Best effort:
+ * failures append a diagnostic and never block the Host from starting.
+ */
+const BUILTIN_PLUGINS_DIR = unpackedPath(join(root, 'builtin-plugins'))
+// The Host (and its admin-console bundle) inherits this to locate the built-in plugin
+// manifest for the "设为内置" action; see tb-plugin-admin-console host routes.
+process.env.TRAVEL_BUILTIN_PLUGINS_DIR = BUILTIN_PLUGINS_DIR
+const BUILTIN_CACHE_DIR = join(home, 'builtin-cache')
+type BuiltinManifestEntry = { name: string, version: string, file: string }
+function runBuiltinPnpm(args: string[], cwd: string, timeoutMs: number): Promise<void> {
+  const invocation = bundledPnpmInvocation(dirname(NEXT_PACKAGE))
+  return new Promise<void>((resolvePnpm, rejectPnpm) => {
+    const child = spawn(invocation.command, [...invocation.args, ...args], {
+      cwd, env: { ...process.env, ...invocation.env }, windowsHide: true, stdio: 'ignore',
+    })
+    const timer = setTimeout(() => { child.kill() }, timeoutMs)
+    child.once('error', error => { clearTimeout(timer); rejectPnpm(error) })
+    child.once('close', code => {
+      clearTimeout(timer)
+      if (code === 0) resolvePnpm()
+      else rejectPnpm(new Error(`pnpm ${args.join(' ')} exited with code ${String(code)}`))
+    })
+  })
+}
+async function ensureBuiltinPlugins(): Promise<void> {
+  let raw: unknown
+  try { raw = JSON.parse(readFileSync(join(BUILTIN_PLUGINS_DIR, 'builtin-plugins.json'), 'utf8')) } catch { return }
+  if (!Array.isArray(raw)) return
+  const entries = raw.filter((e): e is BuiltinManifestEntry => e !== null && typeof e === 'object'
+    && /^[a-z0-9][a-z0-9._-]{1,62}$/i.test(String((e as BuiltinManifestEntry).name))
+    && /^[\w.@-]+\.tgz$/i.test(String((e as BuiltinManifestEntry).file)))
+  if (entries.length === 0) return
+  let active = 'tb-profile'
+  try { active = String(JSON.parse(readFileSync(join(home, 'desktop-next.json'), 'utf8')).active ?? active) } catch { /* fall back to default profile */ }
+  if (!/^[a-z0-9][a-z0-9-]*$/i.test(active)) return
+  const profileDir = join(home, 'profiles', active)
+  const pkgPath = join(profileDir, 'package.json')
+  let pkg: Record<string, unknown>
+  try { pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown> } catch { return }
+  pkg.dependencies ??= {}
+  const dependencies = pkg.dependencies as Record<string, string>
+  pkg.dsh ??= {}
+  const dsh = pkg.dsh as Record<string, unknown>
+  dsh.profile ??= {}
+  const profile = dsh.profile as Record<string, unknown>
+  profile.bundles ??= []
+  const bundles = profile.bundles as string[]
+  // The profile lives at <home>/profiles/<name>, the cache at <home>/builtin-cache:
+  // two levels up from the profile directory, and home-relative so a moved home keeps working.
+  const specOf = (file: string): string => `file:../../builtin-cache/${file}`
+  const wanted = new Set(entries.map(entry => entry.name))
+  const drift = entries.some(entry => dependencies[entry.name] !== specOf(entry.file) || !bundles.includes(entry.name))
+    || Object.entries(dependencies).some(([dep, spec]) => typeof spec === 'string' && spec.includes('/builtin-cache/') && !wanted.has(dep))
+  if (!drift) return
+  runtime.diagnostics.append(`Travel builtin: syncing ${String(entries.length)} built-in plugin(s) into profile ${active}`, 'info')
+  try { mkdirSync(BUILTIN_CACHE_DIR, { recursive: true }) } catch (error) { runtime.diagnostics.append(`Travel builtin: cache directory unavailable: ${String(error)}`, 'warn'); return }
+  for (const entry of entries) {
+    try {
+      copyFileSync(join(BUILTIN_PLUGINS_DIR, entry.file), join(BUILTIN_CACHE_DIR, entry.file))
+      await runBuiltinPnpm(['add', specOf(entry.file)], profileDir, 180_000)
+      dependencies[entry.name] = specOf(entry.file)
+      if (!bundles.includes(entry.name)) bundles.push(entry.name)
+      writeFileSync(pkgPath, JSON.stringify(pkg, undefined, 2) + '\n')
+    } catch (error) { runtime.diagnostics.append(`Travel builtin: install ${entry.name} failed: ${String(error)}`, 'warn') }
+  }
+  for (const [dep, spec] of Object.entries(dependencies)) {
+    if (typeof spec === 'string' && spec.includes('/builtin-cache/') && !wanted.has(dep)) {
+      try {
+        await runBuiltinPnpm(['remove', dep], profileDir, 120_000)
+        delete dependencies[dep]
+        const index = bundles.indexOf(dep)
+        if (index >= 0) bundles.splice(index, 1)
+        writeFileSync(pkgPath, JSON.stringify(pkg, undefined, 2) + '\n')
+      } catch (error) { runtime.diagnostics.append(`Travel builtin: remove ${dep} failed: ${String(error)}`, 'warn') }
+    }
+  }
+}
+
 function travelStartupChain(): void {
   if (runtime.recoveryMode) { openControls('recovery'); return }
   if (!travelLoggedIn) { openControls('login'); return }
   if (onboarding) { openControls('onboarding'); return }
-  if (!travelHostStarted) { travelHostStarted = true; void runtime.start().catch(() => {}) }
+  if (!travelHostStarted) {
+    travelHostStarted = true
+    void ensureBuiltinPlugins().catch(() => {}).then(() => { runtime.start().catch(() => {}) })
+  }
   openMain()
 }
 let relaunch: string[] | undefined
@@ -844,7 +930,10 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
       if (runtime.recoveryMode) { openControls('recovery'); return }
       if (onboarding) { openControls('onboarding'); return }
       shellWindow?.hide()
-      if (!travelHostStarted) { travelHostStarted = true; void runtime.start().catch(() => {}) }
+      if (!travelHostStarted) {
+        travelHostStarted = true
+        void ensureBuiltinPlugins().catch(() => {}).then(() => { runtime.start().catch(() => {}) })
+      }
       else {
         // The host composed under the previous session's grants env (TRAVEL_ENABLE_*
         // is read at composition time). Re-login restarts it so a grants change takes
