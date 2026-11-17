@@ -12,6 +12,7 @@ import { MarketLauncher } from './MarketLauncher.js'
 import { MarketOverlay } from './MarketOverlay.js'
 import { MarketSettingsTab } from './MarketSettingsTab.js'
 import { createMarketViewStore } from './market-view-store.js'
+import { travelSharedVerify } from './travel-auth.js'
 import { en, zh } from './locales.js'
 import { installMarketStyles } from './styles.js'
 
@@ -37,14 +38,20 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     inject: () => ({ readLocale }),
   }, MarketSettingsTab))
-  ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
-    name: 'sidebar.footer.action',
-    id: 'community-market',
-    order: 10,
-    label: () => ctx.locale.bind(NS)('tab'),
-    locale: NS,
-    store: marketView,
-  }, MarketLauncher))
+  // Travel Buddy (fork): the stock market launcher is the admin/debug channel.
+  // C-end users get the App Center (dsh-travel-store) instead — fail-closed.
+  void (async () => {
+    const session = await travelSharedVerify()
+    if (session?.user?.role !== 'super_admin' && session?.user?.role !== 'admin') return
+    ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+      name: 'sidebar.footer.action',
+      id: 'community-market',
+      order: 10,
+      label: () => ctx.locale.bind(NS)('tab'),
+      locale: NS,
+      store: marketView,
+    }, MarketLauncher))
+  })()
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay',
     id: 'community-market',
