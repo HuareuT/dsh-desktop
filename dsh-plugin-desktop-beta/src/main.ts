@@ -164,7 +164,7 @@ function travelApplyRoleEnv(): void {
   process.env.TRAVEL_ENABLE_SCHEDULE = travelPlugins.includes('ui-schedule') ? '1' : '0'
   process.env.TRAVEL_ENABLE_SUPER_PANELS = travelUserRole === 'super_admin' ? '1' : '0'
 }
-const TRAVEL_AUTH_BASE = 'http://127.0.0.1:8790'
+const TRAVEL_AUTH_BASE = 'https://work.tipsmuseum.com'
 const TRAVEL_SESSION_FILE = join(home, '.travel-session.json')
 type TravelSession = { token: string; user: string }
 async function travelRequest(path: string, init: RequestInit): Promise<{ status: number; body: Record<string, unknown> | null }> {

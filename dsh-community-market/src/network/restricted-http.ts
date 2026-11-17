@@ -433,5 +433,5 @@ export function createCachedCatalogHttpClient(
 // block (198.18.0.0/15). C-end users commonly run local proxies with fake-ip DNS;
 // quick tunnels rotate subdomains so the suffix is exempted (upstream hard-codes
 // the same exemption for its built-in partner hosts, see host/routes.ts).
-export const TRAVEL_BUDDY_SYNTHETIC_PROXY_SUFFIXES = ['.trycloudflare.com']
+export const TRAVEL_BUDDY_SYNTHETIC_PROXY_SUFFIXES = ['.trycloudflare.com', '.tipsmuseum.com']
 export const restrictedHttpClient: CatalogHttpClient = createRestrictedHttpClient()

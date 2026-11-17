@@ -18,7 +18,7 @@ declare global {
   interface Window { __travelVerify?: Promise<TravelSession | undefined> }
 }
 
-export const TRAVEL_AUTH_BASE = 'http://127.0.0.1:8790'
+export const TRAVEL_AUTH_BASE = 'https://work.tipsmuseum.com'
 
 export function travelSharedVerify(): Promise<TravelSession | undefined> {
   const token = new URLSearchParams(window.location.search).get('travel_token')

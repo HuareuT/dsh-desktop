@@ -14,6 +14,7 @@ import {
   isDsh1024StoreAdapterId,
 } from '../adapters/dsh-1024store.js'
 import { DSHFIND_ADAPTER_ID, DSHFIND_ENDPOINT, DSHFIND_KEY, DSHFIND_PROVIDER_ID, dshfindAdapter } from '../adapters/dshfind.js'
+import { TRAVEL_BUDDY_ADAPTER_ID, TRAVEL_BUDDY_ENDPOINT, TRAVEL_BUDDY_KEY, TRAVEL_BUDDY_PROVIDER_ID, travelBuddyAdapter } from '../adapters/travel-buddy.js'
 import { standardHttpAdapter } from '../adapters/standard-http.js'
 
 export interface BuiltInProviderDefinition {
@@ -66,12 +67,34 @@ const ALL_BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] = [
  * Travel Buddy factory-clean build: ship no third-party built-in catalog sources by default.
  * Sources then come only from what the operator/admin adds (e.g. the private vertical catalog).
  * Set TRAVEL_KEEP_BUILTIN_MARKET_SOURCES=1 to restore the upstream behavior for development.
+ *
+ * The one exception is our own vertical catalog on the control-plane server: it is
+ * registered as a built-in provider so admins/devs can add it with one click (the
+ * consumer-facing channel is the app center, which lists the same backend with
+ * entitlement filtering).
  */
-export const BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] =
-  process.env.TRAVEL_KEEP_BUILTIN_MARKET_SOURCES === '1' ? ALL_BUILT_IN_PROVIDERS : []
+const TRAVEL_BUDDY_PROVIDER: BuiltInProviderDefinition = {
+  key: TRAVEL_BUDDY_KEY,
+  name: 'Travel Buddy 插件目录',
+  description: 'Travel Buddy 官方插件目录（控制面服务器）。需要用户明确添加并启用。',
+  providerId: TRAVEL_BUDDY_PROVIDER_ID,
+  adapterId: TRAVEL_BUDDY_ADAPTER_ID,
+  endpoint: TRAVEL_BUDDY_ENDPOINT,
+  attribution: {
+    name: 'travel-buddy',
+    url: 'https://work.tipsmuseum.com',
+  },
+  partnership: true,
+}
+
+export const BUILT_IN_PROVIDERS: readonly BuiltInProviderDefinition[] = [
+  TRAVEL_BUDDY_PROVIDER,
+  ...(process.env.TRAVEL_KEEP_BUILTIN_MARKET_SOURCES === '1' ? ALL_BUILT_IN_PROVIDERS : []),
+]
 
 const adapters = new Map<string, CatalogAdapter>([
   [standardHttpAdapter.adapterId, standardHttpAdapter],
+  [travelBuddyAdapter.adapterId, travelBuddyAdapter],
   [dsh1024StoreAdapter.adapterId, dsh1024StoreAdapter],
   [DSH_1024STORE_LEGACY_ADAPTER_ID, dsh1024StoreAdapter],
   [dshfindAdapter.adapterId, dshfindAdapter],
