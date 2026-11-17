@@ -3,5 +3,10 @@
     "name": "tb-plugin-travel-account",
     "version": "0.1.7",
     "file": "tb-plugin-travel-account-0.1.7.tgz"
+  },
+  {
+    "name": "tb-plugin-travel-store",
+    "version": "0.2.0",
+    "file": "tb-plugin-travel-store-0.2.0.tgz"
   }
 ]
