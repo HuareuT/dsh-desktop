@@ -85,7 +85,14 @@ export function normalizeRepositoryIdentity(repository: RepositoryIdentity): Nor
 }
 
 export function normalizePackageIdentity(packageIdentity: PackageIdentity): NormalizedPackageIdentity {
-  return { registry: 'npm', name: packageIdentity.name }
+  if (packageIdentity.registry !== 'https') return { registry: 'npm', name: packageIdentity.name }
+  return {
+    registry: 'https',
+    name: packageIdentity.name,
+    ...(packageIdentity.version === undefined ? {} : { version: packageIdentity.version }),
+    ...(packageIdentity.tarball === undefined ? {} : { tarball: packageIdentity.tarball }),
+    ...(packageIdentity.integrity === undefined ? {} : { integrity: packageIdentity.integrity }),
+  }
 }
 
 /** Validate a pinned GitHub source against the same canonical repository identity. */

@@ -239,15 +239,58 @@
       ],
       "properties": {
         "registry": {
-          "const": "npm"
+          "enum": [
+            "npm",
+            "https"
+          ]
         },
         "name": {
           "type": "string",
           "minLength": 1,
           "maxLength": 214,
           "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "tarball": {
+          "$ref": "#/$defs/httpsUri"
+        },
+        "integrity": {
+          "type": "string",
+          "pattern": "^sha512-[A-Za-z0-9+/]+={0,2}$"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "registry": {
+                "const": "https"
+              }
+            },
+            "required": [
+              "registry"
+            ]
+          },
+          "then": {
+            "properties": {
+              "tarball": {
+                "$ref": "#/$defs/httpsUri"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+              }
+            },
+            "required": [
+              "tarball",
+              "version"
+            ]
+          }
+        }
+      ]
     },
     "publisher": {
       "type": "object",

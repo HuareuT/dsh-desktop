@@ -45,6 +45,15 @@ export type Item1 =
 export type Identifier = string
 export type PlainText = string
 export type CategoryId = string
+export type Package = {
+  [k: string]: unknown
+} & {
+  registry: 'npm' | 'https'
+  name: string
+  version?: string
+  tarball?: HttpsUri
+  integrity?: string
+}
 /**
  * An opaque Host-managed media reference. It is neither a remote URL nor a filesystem path and is the only media locator exposed to the Renderer.
  */
@@ -84,10 +93,6 @@ export interface Repository {
 export interface InstallSource {
   kind: 'github'
   commit: string
-}
-export interface Package {
-  registry: 'npm'
-  name: string
 }
 export interface Publisher {
   name: PlainText

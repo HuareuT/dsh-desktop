@@ -92,8 +92,13 @@ export interface NormalizedRepositoryIdentity {
 }
 
 export interface NormalizedPackageIdentity {
-  readonly registry: 'npm'
+  /** `npm` asks registry.npmjs.org for `name@version`; `https` installs the tarball URL
+   *  directly, which is how Travel Buddy serves its own plugins without npm. */
+  readonly registry: 'npm' | 'https'
   readonly name: string
+  readonly version?: string
+  readonly tarball?: string
+  readonly integrity?: string
 }
 
 /** A pinned GitHub source descriptor; metadata only until install support is enabled. */

@@ -176,6 +176,12 @@ interface InstallCandidate {
   readonly displayName: string
   readonly packageName?: string
   readonly source?: NormalizedGitHubInstallSource
+  /** Self-hosted tarball: the catalog names a URL instead of an npm coordinate. */
+  readonly tarball?: {
+    readonly url: string
+    readonly version?: string
+    readonly integrity?: string
+  }
   readonly savedAt: number
 }
 
@@ -227,6 +233,11 @@ export interface MarketPackageVerification extends MarketNpmPackageVerification 
 export interface MarketInstallCandidateInput {
   readonly packageName?: string
   readonly source?: NormalizedGitHubInstallSource
+  readonly tarball?: {
+    readonly url: string
+    readonly version?: string
+    readonly integrity?: string
+  }
 }
 
 export interface MarketPackageVerifier {
@@ -327,12 +338,51 @@ export function createNpmRegistryVerifier(http: CatalogHttpClient): MarketNpmPac
 }
 
 /** Combine the stable npm verifier and the pinned GitHub manifest verifier. */
+/** Self-hosted tarball verification.
+ *
+ *  There is no registry to ask: the coordinate arrived inside a catalog that was already
+ *  fetched from a verified HTTPS provider under the same trust root, and the bytes are
+ *  served by that provider. What we still enforce here is the shape — absolute HTTPS URL,
+ *  no credentials, no fragment — plus an explicit stable version, so a catalog cannot
+ *  smuggle in a `file:`/`http:` target or an unpinned build.
+ */
+function tarballVerification(candidate: MarketInstallCandidateInput): MarketPackageVerification {
+  const tarball = candidate.tarball
+  if (tarball === undefined) throw new MarketInstallError('verification-failed', 'The plugin tarball is missing.')
+  let url: URL
+  try { url = new URL(tarball.url) } catch {
+    throw new MarketInstallError('verification-failed', 'The plugin tarball URL is invalid.')
+  }
+  if (url.protocol !== 'https:') {
+    throw new MarketInstallError('verification-failed', 'The plugin tarball must be served over HTTPS.')
+  }
+  if (url.username !== '' || url.password !== '') {
+    throw new MarketInstallError('verification-failed', 'The plugin tarball URL must not carry credentials.')
+  }
+  if (url.hash !== '') {
+    throw new MarketInstallError('verification-failed', 'The plugin tarball URL must not carry a fragment.')
+  }
+  if (!url.pathname.toLowerCase().endsWith('.tgz')) {
+    throw new MarketInstallError('verification-failed', 'The plugin tarball URL must point at a .tgz file.')
+  }
+  if (tarball.version === undefined || !stableExactVersion(tarball.version)) {
+    throw new MarketInstallError('verification-failed', 'The catalog must pin a stable version for the plugin tarball.')
+  }
+  if (candidate.packageName === undefined || !safePackageName(candidate.packageName)) {
+    throw new MarketInstallError('verification-failed', 'The plugin package name is invalid.')
+  }
+  return { version: tarball.version, packageName: candidate.packageName }
+}
+
 export function createMarketPackageVerifier(
   http: CatalogHttpClient,
 ): MarketPackageVerifier {
   const npm = createNpmRegistryVerifier(http)
   return {
     async verify(candidate, signal) {
+      if (candidate.tarball !== undefined) {
+        return tarballVerification(candidate)
+      }
       if (candidate.source !== undefined) {
         try {
           const verification: GitHubPackageVerification = await createGitHubPackageVerifier(http)
@@ -534,8 +584,20 @@ export class MarketInstallService {
         try { source = normalizeGitHubInstallSource(item.repository, item.installSource) }
         catch { continue }
       }
-      const packageName = source === undefined && item.package?.registry === 'npm' && safePackageName(item.package.name)
-        ? item.package.name
+      // Self-hosted tarball: the provider publishes a URL we install verbatim. An npm
+      // coordinate is still the default; `registry: 'https'` opts out of the registry.
+      const identity = source === undefined && item.package !== undefined && safePackageName(item.package.name)
+        ? item.package
+        : undefined
+      const tarball = identity?.registry === 'https' && identity.tarball !== undefined
+        ? {
+            url: identity.tarball,
+            ...(identity.version === undefined ? {} : { version: identity.version }),
+            ...(identity.integrity === undefined ? {} : { integrity: identity.integrity }),
+          }
+        : undefined
+      const packageName = identity !== undefined && (identity.registry === 'npm' || tarball !== undefined)
+        ? identity.name
         : undefined
       if (
         item.provenance.sourceRecordId !== snapshot.source.sourceRecordId
@@ -554,6 +616,7 @@ export class MarketInstallService {
         displayName: item.displayName,
         ...(packageName === undefined ? {} : { packageName }),
         ...(source === undefined ? {} : { source }),
+        ...(tarball === undefined ? {} : { tarball }),
         savedAt: this.now(),
       }
       this.candidates.set(key, candidate)
@@ -687,9 +750,12 @@ export class MarketInstallService {
         throw new MarketInstallError('not-available', 'The catalog source changed before installation.')
       }
       operationSignal.throwIfAborted()
-      const target = candidate.source === undefined
-        ? `${packageName}@${verification.version}`
-        : githubPackageTarget(candidate.source)
+      // A self-hosted catalog pins the exact tarball; pnpm installs a URL target as-is.
+      const target = candidate.tarball !== undefined
+        ? candidate.tarball.url
+        : candidate.source === undefined
+          ? `${packageName}@${verification.version}`
+          : githubPackageTarget(candidate.source)
       // The official manager validates the bundle, restores the profile files on
       // failure, selects the bundle, and applies it live where HMR is mounted. A
       // bundle it installed and selected but judged before its rows activated is

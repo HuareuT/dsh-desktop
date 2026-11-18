@@ -39,6 +39,15 @@ export type Identifier = string
 export type PlainText = string
 export type HttpsUri = string
 export type CategoryId = string
+export type Package = {
+  [k: string]: unknown
+} & {
+  registry: 'npm' | 'https'
+  name: string
+  version?: string
+  tarball?: HttpsUri
+  integrity?: string
+}
 export type MediaAlt = PlainText
 /**
  * @maxItems 64
@@ -65,10 +74,6 @@ export interface Repository {
 export interface InstallSource {
   kind: 'github'
   commit: string
-}
-export interface Package {
-  registry: 'npm'
-  name: string
 }
 export interface Publisher {
   name: PlainText
