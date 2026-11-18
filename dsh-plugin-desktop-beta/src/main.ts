@@ -366,12 +366,59 @@ function builtinPluginsReady(timeoutMs = 20_000): Promise<void> {
   ])
 }
 
+/** Plan A (T27): every market-installed plugin gets a compose-time gate line, so the
+ *  server-side release_state really switches an already-installed build off:
+ *    pending_test -> gate shut for everybody, testing -> only the super admin,
+ *    released -> whoever the role grants (the backend maps that into env_grants).
+ *  Built-ins ship with the app and are never gated here. Idempotent and cheap. */
+function travelEnsureReleaseGates(): void {
+  try {
+    let active = TRAVEL_PROFILE
+    try {
+      const state = JSON.parse(readFileSync(join(home, 'desktop-next.json'), 'utf8')) as { active?: unknown }
+      if (typeof state.active === 'string' && /^[A-Za-z0-9._-]{1,64}$/.test(state.active)) active = state.active
+    } catch { /* first run: no desktop-next.json yet */ }
+    const profileDir = join(home, 'profiles', active)
+    const pkgFile = join(profileDir, 'package.json')
+    if (!existsSync(pkgFile)) return
+    const pkg = JSON.parse(readFileSync(pkgFile, 'utf8')) as { dependencies?: Record<string, string> }
+    const builtin = new Set(['tb-plugin-travel-account', 'tb-plugin-travel-store'])
+    const deps = Object.keys(pkg.dependencies ?? {})
+      .filter((name) => name.startsWith('tb-plugin-') && !builtin.has(name))
+    if (deps.length === 0) return
+    const patchFile = join(profileDir, 'cordis.patch.yml')
+    let text = existsSync(patchFile) ? readFileSync(patchFile, 'utf8') : ''
+    if (!text.endsWith('\n')) text += '\n'
+    let added = 0
+    for (const dep of deps) {
+      const env = 'TRAVEL_ENABLE_' + dep.replace(/^tb-plugin-/, '').replace(/[^A-Za-z0-9]/g, '_').toUpperCase()
+      let id = dep.replace(/^tb-plugin-/, '')
+      const own = join(profileDir, 'node_modules', dep, 'cordis.patch.yml')
+      if (existsSync(own)) {
+        const hit = readFileSync(own, 'utf8').match(/- id:\s*([A-Za-z0-9._-]+)/)
+        if (hit !== null) id = hit[1]
+      }
+      const existing = new RegExp(`^- id:\\s*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm')
+      if (existing.test(text)) continue
+      text += `- id: ${id}\n  disabled: !!js "process.env.${env} !== '1'"\n`
+      added += 1
+    }
+    if (added > 0) {
+      writeFileSync(patchFile, text, 'utf8')
+      runtime.diagnostics.append(`Travel gates: added ${added} release gate(s) to ${active}`, 'info')
+    }
+  } catch (error) {
+    runtime.diagnostics.append(`Travel gates: skipped (${error instanceof Error ? error.message : String(error)})`, 'warn')
+  }
+}
+
 function travelStartupChain(): void {
   if (runtime.recoveryMode) { openControls('recovery'); return }
   if (!travelLoggedIn) { openControls('login'); return }
   if (onboarding) { openControls('onboarding'); return }
   if (!travelHostStarted) {
     travelHostStarted = true
+    travelEnsureReleaseGates()
     void builtinPluginsReady().then(() => { runtime.start().catch(() => {}) })
   }
   openMain()
