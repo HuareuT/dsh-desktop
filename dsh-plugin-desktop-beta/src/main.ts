@@ -246,7 +246,28 @@ function travelMainUrl(): string {
  * manifest. No manifest or no drift → zero work, no startup delay. Best effort:
  * failures append a diagnostic and never block the Host from starting.
  */
-const BUILTIN_PLUGINS_DIR = unpackedPath(join(root, 'builtin-plugins'))
+/**
+ * Where the packaged built-in plugin manifest lives. A development launch keeps it in the
+ * Desktop package; a packaged build copies it to the payload root, which Electron Builder
+ * unpacks beside the archive — neither of those is `dirname(NEXT_PACKAGE)` once packed, so
+ * probe the plausible roots and take the first that actually carries the manifest.
+ */
+function resolveBuiltinPluginsDir(): string {
+  const candidates = [
+    join(root, 'builtin-plugins'),
+    unpackedPath(join(app.getAppPath(), 'builtin-plugins')),
+    join(app.getAppPath(), 'builtin-plugins'),
+    unpackedPath(join(root, 'builtin-plugins')),
+    join(process.resourcesPath, 'builtin-plugins'),
+  ]
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(join(candidate, 'builtin-plugins.json'))) return candidate
+    } catch { /* a missing root is not an error: try the next one */ }
+  }
+  return candidates[0]
+}
+const BUILTIN_PLUGINS_DIR = resolveBuiltinPluginsDir()
 // The Host (and its admin-console bundle) inherits this to locate the built-in plugin
 // manifest for the "设为内置" action; see tb-plugin-admin-console host routes.
 process.env.TRAVEL_BUILTIN_PLUGINS_DIR = BUILTIN_PLUGINS_DIR
@@ -269,7 +290,10 @@ function runBuiltinPnpm(args: string[], cwd: string, timeoutMs: number): Promise
 }
 async function ensureBuiltinPlugins(): Promise<void> {
   let raw: unknown
-  try { raw = JSON.parse(readFileSync(join(BUILTIN_PLUGINS_DIR, 'builtin-plugins.json'), 'utf8')) } catch { return }
+  try { raw = JSON.parse(readFileSync(join(BUILTIN_PLUGINS_DIR, 'builtin-plugins.json'), 'utf8')) } catch (error) {
+    runtime.diagnostics.append(`Travel builtin: no manifest at ${BUILTIN_PLUGINS_DIR} (${String(error)})`, 'warn')
+    return
+  }
   if (!Array.isArray(raw)) return
   const entries = raw.filter((e): e is BuiltinManifestEntry => e !== null && typeof e === 'object'
     && /^[a-z0-9][a-z0-9._-]{1,62}$/i.test(String((e as BuiltinManifestEntry).name))
@@ -321,13 +345,34 @@ async function ensureBuiltinPlugins(): Promise<void> {
   }
 }
 
+/**
+ * Built-in plugin sync with a deadline. Seeding shells out to the bundled pnpm, so a slow or
+ * broken package manager must never hold the Host back: after the deadline the chain continues
+ * and the user simply starts without the built-in plugins.
+ */
+function builtinPluginsReady(timeoutMs = 20_000): Promise<void> {
+  const settled = ensureBuiltinPlugins().catch(error => {
+    runtime.diagnostics.append(`Travel builtin: sync failed: ${String(error)}`, 'warn')
+  })
+  return Promise.race([
+    settled,
+    new Promise<void>(resolveTimeout => {
+      const timer = setTimeout(() => {
+        runtime.diagnostics.append(`Travel builtin: sync still running after ${String(timeoutMs)}ms; starting the Host without waiting`, 'warn')
+        resolveTimeout()
+      }, timeoutMs)
+      void settled.finally(() => { clearTimeout(timer) })
+    }),
+  ])
+}
+
 function travelStartupChain(): void {
   if (runtime.recoveryMode) { openControls('recovery'); return }
   if (!travelLoggedIn) { openControls('login'); return }
   if (onboarding) { openControls('onboarding'); return }
   if (!travelHostStarted) {
     travelHostStarted = true
-    void ensureBuiltinPlugins().catch(() => {}).then(() => { runtime.start().catch(() => {}) })
+    void builtinPluginsReady().then(() => { runtime.start().catch(() => {}) })
   }
   openMain()
 }
@@ -369,6 +414,33 @@ const primaryRuntime = join(app.isPackaged ? join(process.resourcesPath, 'runtim
   const bundledPython = join(primaryRuntime, 'dependencies', 'python', process.platform === 'win32' ? 'python.exe' : 'bin/python3')
   if (existsSync(bundledPython)) process.env.TRAVEL_PYTHON = bundledPython
 }
+/**
+ * Travel: seed the product profile on a fresh install.
+ *
+ * The runtime resolves its active Profile from `<home>/desktop-next.json` at construction time and
+ * falls back to the stock `desktop` profile, which carries neither the account gate nor the app
+ * center — a freshly installed machine would open a bare DSH window. Seed `tb-profile` only when it
+ * does not exist yet, so an existing install (or a Profile the operator deliberately selected)
+ * keeps its own choice.
+ */
+const TRAVEL_PROFILE = 'tb-profile'
+function ensureTravelProfile(): void {
+  try {
+    const profiles = new NextProfiles(home)
+    if (!existsSync(join(home, 'profiles', TRAVEL_PROFILE, 'package.json'))) {
+      profiles.ensure(TRAVEL_PROFILE)
+      profiles.select(TRAVEL_PROFILE)
+    }
+    // The sign-in gate replaces the upstream first-run wizard. Without this flag a fresh
+    // install signs in and then lands on the wizard instead of the Host, so record the
+    // profile as onboarded rather than only creating it.
+    try { if (profiles.onboardingRequired(TRAVEL_PROFILE)) profiles.finishOnboarding(TRAVEL_PROFILE) } catch (error) { console.error('Travel profile onboarding seed failed', error) }
+  } catch (error) {
+    // Fall back to the default Profile: a broken seed must never stop the application from opening.
+    console.error('Travel profile seed failed', error)
+  }
+}
+ensureTravelProfile()
 const runtime = new NextDesktopRuntime({
   home, root, primaryRuntime, executable: process.execPath, addresses: () => [...desktopLanAddresses()], systemProxy: () => systemProxy,
   prepareEnvironment: () => prepareHostEnvironment(),
@@ -937,7 +1009,7 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
       shellWindow?.hide()
       if (!travelHostStarted) {
         travelHostStarted = true
-        void ensureBuiltinPlugins().catch(() => {}).then(() => { runtime.start().catch(() => {}) })
+        void builtinPluginsReady().then(() => { runtime.start().catch(() => {}) })
       }
       else {
         // The host composed under the previous session's grants env (TRAVEL_ENABLE_*

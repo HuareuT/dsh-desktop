@@ -1,4 +1,4 @@
-﻿/** Materialize the Next payload independently of Electron Builder, then seal it. */
+/** Materialize the Next payload independently of Electron Builder, then seal it. */
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
@@ -12,7 +12,10 @@ import { windowsCodePayload, writeWindowsCodeFiles } from './windows-asar-unpack
 
 /** Shell entries copied beside the dependency tree; `package.json` is written separately. */
 const SHELL_ENTRIES = ['lib', 'assets', 'build/app-icon.ico', 'build/app-icon.png', 'build/app-icon-mac.png',
-  'cordis.patch.yml', 'host.cordis.patch.yml', 'scripts/node-bin'] as const
+  'cordis.patch.yml', 'host.cordis.patch.yml', 'scripts/node-bin',
+  // Travel Buddy ships its built-in plugins inside the application so a fresh install can seed
+  // them without network access; the shell reads them from <app>/builtin-plugins.
+  'builtin-plugins'] as const
 
 /** Names electron-builder's walker never copies; the inventory has to agree with it. */
 const IGNORED_NAMES = new Set(['.DS_Store', '.gitkeep'])

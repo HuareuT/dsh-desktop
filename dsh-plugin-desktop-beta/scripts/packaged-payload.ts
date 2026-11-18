@@ -186,7 +186,7 @@ const REQUIRED_UNPACKED = [
 ] as const
 
 /** The only entries the prepared payload places at its root. */
-const ALLOWED_ROOT_ENTRIES = new Set(['assets', 'build', 'cordis.patch.yml', DESKTOP_RUNTIME_FILE, 'host.cordis.patch.yml', 'lib', 'node_modules', 'package.json', 'scripts'])
+const ALLOWED_ROOT_ENTRIES = new Set(['assets', 'build', 'builtin-plugins', 'cordis.patch.yml', DESKTOP_RUNTIME_FILE, 'host.cordis.patch.yml', 'lib', 'node_modules', 'package.json', 'scripts'])
 
 /**
  * Resolve a dependency as Node does from a packaged manifest: the package's own node_modules, then each enclosing one.
