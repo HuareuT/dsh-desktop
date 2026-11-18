@@ -13,7 +13,7 @@ import type {
   Registry,
   UpdateBundleOptions,
 } from '@deepseek-ai/dsh-plugin-manager'
-import { prerelease, valid } from 'semver'
+import { compare, prerelease, valid } from 'semver'
 import type {
   MarketCatalogMetadata,
   MarketInstallableResponse,
@@ -256,6 +256,12 @@ export interface MarketInstallServiceOptions {
   readonly activationPollMs?: number
   /** Receives bounded package-manager failures for the Desktop persistent log. */
   readonly logFailure?: (message: string) => void
+  /**
+   * Travel Buddy: packages installed from a self-hosted tarball URL have no npm
+   * registry to ask about newer versions. This index (served next to the catalog)
+   * answers the update check instead, so the whole pipeline stays off npm.
+   */
+  readonly hostedPackageIndexUrl?: string
 }
 
 function stableExactVersion(value: unknown): value is string {
@@ -543,6 +549,7 @@ export class MarketInstallService {
   private readonly activationGraceMs: number
   private readonly activationPollMs: number
   private readonly logFailure: ((message: string) => void) | undefined
+  private readonly hostedPackageIndexUrl: string | undefined
   private readonly generation = new AbortController()
   private operationActive = false
   private closed = false
@@ -561,6 +568,7 @@ export class MarketInstallService {
     this.activationGraceMs = options.activationGraceMs ?? ACTIVATION_GRACE_MS
     this.activationPollMs = options.activationPollMs ?? ACTIVATION_POLL_MS
     this.logFailure = options.logFailure
+    this.hostedPackageIndexUrl = options.hostedPackageIndexUrl
     for (const [label, value] of [
       ['intent TTL', this.intentTtlMs],
       ['candidate TTL', this.candidateTtlMs],
@@ -678,8 +686,40 @@ export class MarketInstallService {
   /** Check one updatable community bundle for newer versions through the official manager's version listing. */
   async checkUpdate(packageName: string, signal: AbortSignal): Promise<MarketInstallationUpdateCheck> {
     const operationSignal = this.operationSignal(signal)
+    // Travel Buddy: self-hosted packages answer from our own index, never npm.
+    const hosted = await this.hostedUpdateCheck(packageName, operationSignal).catch(() => undefined)
+    if (hosted !== undefined) return hosted
     const list = await this.listUpdateVersions(packageName, operationSignal)
     return list.status === 'failed' ? list : updateCheck(list)
+  }
+
+  /**
+   * Resolve an update from the hosted package index. Applies to every installed
+   * bundle whose installed version is a plain release, which is what a tarball
+   * install pins; the official manager cannot list versions for those.
+   */
+  private async hostedUpdateCheck(
+    packageName: string,
+    signal: AbortSignal,
+  ): Promise<MarketInstallationUpdateCheck | undefined> {
+    const indexUrl = this.hostedPackageIndexUrl
+    if (indexUrl === undefined || !safePackageName(packageName)) return undefined
+    const bundles = await this.listBundles()
+    const installed = bundles.find(item => item.name === packageName)?.version
+    if (typeof installed !== 'string' || !stableExactVersion(installed)) return undefined
+    let index: { packages?: readonly { name?: unknown; latest?: unknown }[] }
+    try {
+      const response = await fetch(indexUrl, { signal })
+      if (!response.ok) return undefined
+      index = await response.json() as typeof index
+    } catch {
+      return undefined
+    }
+    const latest = index.packages?.find(entry => entry.name === packageName)?.latest
+    if (typeof latest !== 'string' || !stableExactVersion(latest)) return undefined
+    return compare(latest, installed) > 0
+      ? { status: 'available', installed, version: latest }
+      : { status: 'latest', installed }
   }
 
   async previewInstall(

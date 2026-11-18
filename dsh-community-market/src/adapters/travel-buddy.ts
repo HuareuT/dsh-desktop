@@ -17,6 +17,8 @@ export const TRAVEL_BUDDY_KEY = 'travel-buddy'
 export const TRAVEL_BUDDY_MANIFEST_URL = 'https://work.tipsmuseum.com/manifest.json'
 export const TRAVEL_BUDDY_ENDPOINT = TRAVEL_BUDDY_MANIFEST_URL
 export const TRAVEL_BUDDY_PROVIDER_ID = 'dev.travelbuddy.market'
+/** Version index served next to the catalog: updates are answered here, never from npm. */
+export const TRAVEL_BUDDY_PACKAGE_INDEX_URL = 'https://work.tipsmuseum.com/packages/index.json'
 export const TRAVEL_BUDDY_ADAPTER_ID = 'market.travel-buddy-v1'
 
 export const travelBuddyAdapter: CatalogAdapter = {

@@ -6,6 +6,7 @@ import type {} from '@deepseek-ai/dsh-storage-domain'
 import { registerMarketRoutes } from './host/routes.js'
 import { DeferredMarketStateStore } from './catalog/state-store.js'
 import { createRestrictedHttpClient } from './network/restricted-http.js'
+import { TRAVEL_BUDDY_PACKAGE_INDEX_URL } from './adapters/travel-buddy.js'
 import {
   createMarketPackageVerifier,
   MarketInstallService,
@@ -82,6 +83,7 @@ export function apply(ctx: Context): void {
         createMarketPackageVerifier(npmRegistryHttp),
         {
           logFailure: message => ctx.logger.error(message),
+          hostedPackageIndexUrl: TRAVEL_BUDDY_PACKAGE_INDEX_URL,
         },
       )
       installService = service
