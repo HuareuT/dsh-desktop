@@ -1,7 +1,28 @@
+# Travel Buddy (T21): the client is end-user only. The stock DSH admin surfaces are
+# switched off in the shell layer so that a brand-new profile (no user patch yet) is
+# already clean: plugin manager, scheduler, entry customization, the plugin market
+# launcher page, and the super-admin settings pages. Administration lives in a separate
+# web console, so these rows are constants instead of per-user entitlements.
+- id: ui-schedule
+  disabled: true
+- id: ui-plugin-manager
+  disabled: true
+- id: entry-customization
+  disabled: true
 - id: ui-sidebar-browser
-  # Desktop capability does not depend on the user's Profile name. The later
-  # user patch can still disable the Browser explicitly.
-  disabled: false
+  # Desktop capability does not depend on the user's Profile name; the user patch layer
+  # can still override this row, but the shipped default hides the market browser.
+  disabled: true
+- id: ui-settings-plugins
+  disabled: true
+- id: ui-settings-plugin-inventory
+  disabled: true
+- id: ui-agent-preset
+  disabled: true
+- id: ui-settings
+  name: '@deepseek-ai/dsh-client-ui-settings'
+  config:
+    enabled: false
 - insert:
     - id: desktop-next-capabilities
       name: dsh-plugin-desktop-beta
