@@ -41,10 +41,10 @@ function mockSpawnSuccess() {
 }
 
 it('rejects Stable installers and an unexpected release even when the archive is valid', () => {
-  expect(() => assertNextMacBundle('ai.deepseek.dsh.desktop.beta', { name: 'dsh-plugin-desktop-beta', version: '2.0.14-beta.1' }, '2.0.14-beta.1')).not.toThrow()
-  expect(() => assertNextMacBundle('ai.deepseek.dsh.desktop', { name: 'dsh-plugin-desktop-beta', version: '2.0.14-beta.1' }, '2.0.14-beta.1')).toThrow()
-  expect(() => assertNextMacBundle('ai.deepseek.dsh.desktop.beta', { name: 'dsh-plugin-desktop-beta', version: '2.0.13-beta.1' }, '2.0.14-beta.1')).toThrow()
-  expect(() => assertNextWindowsInstaller({ ProductName: 'DSH Desktop Beta', ProductVersion: '2.0.14-beta.1' }, '2.0.14-beta.1')).not.toThrow()
+  expect(() => assertNextMacBundle('com.travelbuddy.desktop', { name: 'dsh-plugin-desktop-beta', version: '2.0.14-beta.1' }, '2.0.14-beta.1')).not.toThrow()
+  expect(() => assertNextMacBundle('com.other.app', { name: 'dsh-plugin-desktop-beta', version: '2.0.14-beta.1' }, '2.0.14-beta.1')).toThrow()
+  expect(() => assertNextMacBundle('com.travelbuddy.desktop', { name: 'dsh-plugin-desktop-beta', version: '2.0.13-beta.1' }, '2.0.14-beta.1')).toThrow()
+  expect(() => assertNextWindowsInstaller({ ProductName: 'Travel Buddy', ProductVersion: '2.0.14-beta.1' }, '2.0.14-beta.1')).not.toThrow()
   expect(() => assertNextWindowsInstaller({ ProductName: 'DSH Desktop', ProductVersion: '2.0.14-beta.1' }, '2.0.14-beta.1')).toThrow()
 })
 
@@ -54,14 +54,14 @@ it('launches the Windows NSIS installer visibly without /S so progress is shown 
   await writeFile(exe, 'installer')
   execFileMock.mockImplementation((_file: string, _args: string[], _opts: unknown, callback: (err: Error | null, stdout: string, stderr: string) => void) => {
     callback(null, JSON.stringify({
-      ProductName: 'DSH Desktop Beta',
+      ProductName: 'Travel Buddy',
       ProductVersion: '2.0.18-beta.2',
     }), '')
   })
   mockSpawnSuccess()
   const installer = new NextUpdateInstaller({
     platform: 'win32',
-    executable: 'C:\\Users\\user\\AppData\\Local\\Programs\\DSH Desktop Beta\\DSH Desktop Beta.exe',
+    executable: 'C:\\Users\\user\\AppData\\Local\\Programs\\Travel Buddy\\Travel Buddy.exe',
     log: vi.fn(),
   })
   await installer.prepare(exe, '2.0.18-beta.2', root, new AbortController().signal)
@@ -78,19 +78,19 @@ it('launches the Windows NSIS installer visibly without /S so progress is shown 
 it('stages the verified macOS app bundle and launches the detached progress updater script', async () => {
   const root = await mkdtemp(join(tmpdir(), 'next-mac-update-')); roots.push(root)
   const applications = join(root, 'Applications')
-  const installedBundle = join(applications, 'DSH Desktop Beta.app')
-  const installedExecutable = join(installedBundle, 'Contents', 'MacOS', 'DSH Desktop Beta')
+  const installedBundle = join(applications, 'Travel Buddy.app')
+  const installedExecutable = join(installedBundle, 'Contents', 'MacOS', 'Travel Buddy')
   await mkdir(join(installedBundle, 'Contents', 'MacOS'), { recursive: true })
   await writeFile(installedExecutable, 'binary')
   const staging = join(root, 'staging')
   await mkdir(staging, { recursive: true })
-  const dmg = join(staging, 'DSH-Desktop-Beta-2.0.18-beta.2.dmg')
+  const dmg = join(staging, 'TravelBuddy-2.0.18-beta.2.dmg')
   await writeFile(dmg, 'dmg')
 
   execFileMock.mockImplementation((file: string, args: string[], _opts: unknown, callback: (err: Error | null, stdout: string, stderr: string) => void) => {
     if (file === '/usr/bin/hdiutil' && args[0] === 'attach') {
       const mountPoint = args[args.indexOf('-mountpoint') + 1]!
-      const mountedBundle = join(mountPoint, 'DSH Desktop Beta.app')
+      const mountedBundle = join(mountPoint, 'Travel Buddy.app')
       mkdir(join(mountedBundle, 'Contents', 'Resources', 'app'), { recursive: true })
         .then(() => writeFile(join(mountedBundle, 'Contents', 'Resources', 'app', 'package.json'), JSON.stringify({
           name: 'dsh-plugin-desktop-beta',
@@ -100,7 +100,7 @@ it('stages the verified macOS app bundle and launches the detached progress upda
       return
     }
     if (file === '/usr/libexec/PlistBuddy') {
-      callback(null, 'ai.deepseek.dsh.desktop.beta\n', '')
+      callback(null, 'com.travelbuddy.desktop\n', '')
       return
     }
     if (file === '/usr/bin/codesign' && args[0] === '--verify') {
@@ -139,7 +139,7 @@ it('stages the verified macOS app bundle and launches the detached progress upda
   expect(command).toBe('/bin/sh')
   expect(args[0]).toBe('-c')
   expect(spawnOptions.detached).toBe(true)
-  expect(spawnOptions.env.DSH_UPDATE_STAGED).toBe(join(staging, 'DSH Desktop Beta.app'))
+  expect(spawnOptions.env.DSH_UPDATE_STAGED).toBe(join(staging, 'Travel Buddy.app'))
   expect(spawnOptions.env.DSH_UPDATE_INSTALLED).toBe(installedBundle)
   expect(spawnOptions.env.DSH_UPDATE_MESSAGE).toContain('2.0.18-beta.2')
 })

@@ -184,7 +184,7 @@ it('shows update status and controls on every platform, and sends Linux to the r
     renderToStaticMarkup(createElement(NextUpdateSettings, { state: { ...baseState, platform, updates }, language: 'zh-CN', run: vi.fn() }))
   const linuxHtml = render('linux', { phase: 'idle', installable: false })
   expect(linuxHtml).toContain('应用更新')
-  expect(linuxHtml).toContain('DSH Desktop Beta · 2.0.20-beta.1')
+  expect(linuxHtml).toContain('Travel Buddy · 2.0.20-beta.1')
   expect(linuxHtml).toMatch(/<button[^>]*>检查更新<\/button>/)
   expect(linuxHtml).not.toMatch(/<button[^>]*disabled/)
   expect(linuxHtml).toContain('Linux 版需要手动更新：在发布页下载与当前安装方式相同的安装包（deb、AppImage 或 tar.gz）。')
@@ -196,7 +196,7 @@ it('shows update status and controls on every platform, and sends Linux to the r
 
   const macHtml = render('darwin', { phase: 'idle', installable: false })
   expect(macHtml).toContain('应用更新')
-  expect(macHtml).toContain('DSH Desktop Beta · 2.0.20-beta.1')
+  expect(macHtml).toContain('Travel Buddy · 2.0.20-beta.1')
   expect(macHtml).toContain('检查更新')
   expect(macHtml).toContain('应用内安装更新需要使用 macOS 或 Windows 安装版。')
   expect(macHtml).not.toContain('Linux 版需要手动更新')

@@ -16,10 +16,14 @@ import {
 /** Desktop platforms with a fixed installer download endpoint. */
 export type DesktopDownloadPlatform = 'darwin' | 'win32'
 
-/** Fixed download endpoints that record one user-confirmed installer download. */
+/** Fixed download endpoints that record one user-confirmed installer download.
+ *
+ *  They are served by the Travel Buddy backend out of its `desktop/` release directory, keyed by
+ *  the channel and target-version headers below.
+ */
 export const DESKTOP_DOWNLOAD_URLS: Readonly<Record<DesktopDownloadPlatform, string>> = {
-  darwin: 'https://www.dshdesktop.cn/api/downloads/mac',
-  win32: 'https://www.dshdesktop.cn/api/downloads/windows',
+  darwin: 'https://work.tipsmuseum.com/api/desktop/download/mac',
+  win32: 'https://work.tipsmuseum.com/api/desktop/download/windows',
 }
 
 /** Header pinning a download request and response to the checked release. */

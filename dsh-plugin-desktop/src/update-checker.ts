@@ -6,8 +6,13 @@ import {
   type DesktopInstallationId,
 } from './desktop-installation-id.ts'
 
-/** Public endpoint returning the latest DSH Desktop version for a requested channel. */
-export const DESKTOP_VERSION_ENDPOINT = 'https://www.dshdesktop.cn/api/desktop/version'
+/** Public endpoint returning the latest release for a requested channel.
+ *
+ *  Travel Buddy hosts its own channel: the backend (backend/src/desktop-releases.js) stores the
+ *  installers and answers with the same `{ version, channel, sha256 }` contract the upstream
+ *  service used, so nothing else in this module had to change.
+ */
+export const DESKTOP_VERSION_ENDPOINT = 'https://work.tipsmuseum.com/api/desktop/version'
 
 /** Header carrying the installed Desktop version to the fixed version endpoint. */
 export const DESKTOP_CURRENT_VERSION_HEADER = 'X-DSH-Desktop-Version'

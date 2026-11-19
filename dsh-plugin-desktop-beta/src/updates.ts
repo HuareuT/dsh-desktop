@@ -8,6 +8,14 @@ import { atomicJson, privateDirectory, readPrivateFile } from './private-files.t
 import { withUpdateArch, type UpdateArch } from './update-arch.ts'
 import type { NextUpdateState } from './update-state.ts'
 
+/** Release stream a build belongs to, read off its own version instead of being hard-coded:
+ *  `2.0.22-beta.4` ships on beta, `2.0.23-next` on next, and `2.0.22` on stable. */
+export function releaseChannelOf(version: string): 'stable' | 'beta' | 'next' {
+  const match = /^\d+\.\d+\.\d+-(beta|next)(?:\.\d+)?$/.exec(version.trim())
+  if (match === null) return 'stable'
+  return match[1] === 'beta' ? 'beta' : 'next'
+}
+
 export interface NextUpdateOptions {
   version: string
   platform: string
@@ -100,7 +108,7 @@ export class NextUpdates {
     if (this.state.installable) {
       try { installationId = await getOrCreateDesktopInstallationId(this.options.userData) } catch (error) { this.options.log(error) }
     }
-    return checkForDesktopUpdate({ currentVersion: this.options.version, channel: 'beta', installationId,
+    return checkForDesktopUpdate({ currentVersion: this.options.version, channel: releaseChannelOf(this.options.version), installationId,
       request: (url, init) => this.options.request(url, this.withArch(init)), signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) })
   }
   check(background = false): Promise<void> {
@@ -143,7 +151,8 @@ export class NextUpdates {
         const directory = this.directory = await mkdtemp(join(cache, 'download-'))
         this.set({ phase: 'downloading', version: result.latestVersion, received: 0, total: undefined })
         let lastProgress = 0
-        const path = await downloadDesktopUpdate({ platform, version: result.latestVersion, channel: 'beta',
+        // The channel comes from this build's own version, so a stable install downloads from stable.
+        const path = await downloadDesktopUpdate({ platform, version: result.latestVersion, channel: releaseChannelOf(this.options.version),
           destinationPath: join(directory, desktopUpdateFilename(platform, result.latestVersion, 'beta')),
           request: (url, init) => this.options.artifactRequest(url, this.withArch(init)), expectedSha256: result.installerSha256?.[platform],
           signal: AbortSignal.any([signal, AbortSignal.timeout(60 * 60_000)]), onProgress: (received, total) => {
