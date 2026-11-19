@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('..', import.meta.url))
@@ -14,6 +15,10 @@ if (!existsSync(join(market, 'lib/client.js'))) throw new Error('Build the Commu
 const electron = require('electron')
 const env = { ...process.env }
 delete env.ELECTRON_RUN_AS_NODE
+// A development build keeps its own data directory: the packaged app owns `~/.travel-buddy`, and
+// sharing it would also share the recorded default Workspace, which is what a fresh install must
+// set up on its own. An explicit variable still wins over this default.
+env.DSH_DESKTOP_NEXT_HOME ??= join(homedir(), '.travel-buddy-dev')
 const child = spawn(electron, [root], { cwd: root, env, stdio: 'inherit' })
 child.once('error', error => { console.error(error); process.exitCode = 1 })
 child.once('exit', code => { process.exitCode = code ?? 1 })
