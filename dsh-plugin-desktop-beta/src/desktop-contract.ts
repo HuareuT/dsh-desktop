@@ -117,6 +117,11 @@ export type DesktopCommand =
   | { type: 'onboarding-skip'; profile: string }
   | { type: 'travel-login'; username: string; password: string }
   | { type: 'travel-logout' }
+  /** App center: what this account may use changed, so re-verify and rewrite the
+   *  capability state the Host renders into the prompt (no restart needed). */
+  | { type: 'travel-refresh-grants' }
+  /** App-center "restart to apply" action: a plugin client cannot relaunch the app itself. */
+  | { type: 'travel-relaunch' }
   | { type: 'confirm-lan' }
   | { type: 'open-browser-url' | 'copy-browser-url'; url: string }
   | { type: 'create' | 'switch' | 'delete'; name: string }

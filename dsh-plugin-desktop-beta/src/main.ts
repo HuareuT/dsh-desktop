@@ -169,6 +169,40 @@ function travelApplyRoleEnv(): void {
     travelAppliedEnvKeys.add(key)
   }
 }
+/** Asks the backend for per-plugin runtime secrets and hands them to the host process
+ *  through the environment. The plugin deletes that variable while composing, so the
+ *  Agent (which inherits the host environment) never sees them; business APIs then
+ *  require a signature only the plugin can produce. */
+async function travelApplyPluginSecrets(token: string): Promise<void> {
+  try {
+    const active = travelActiveProfileName()
+    const manifest = JSON.parse(readFileSync(join(home, 'profiles', active, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    const installed = Object.keys(manifest.dependencies ?? {}).filter((name) => name.startsWith('tb-plugin-'))
+    if (installed.length === 0) return
+    const { status, body } = await travelRequest(
+      `/api/plugin-secrets?installed=${encodeURIComponent(installed.join(','))}`,
+      { method: 'GET', headers: { authorization: `Bearer ${token}` } }
+    )
+    const secrets = body?.secrets
+    if (status !== 200 || body?.ok !== true || secrets === null || typeof secrets !== 'object') {
+      runtime.diagnostics.append('Travel secrets: unavailable (' + String(status) + ')', 'warn')
+      return
+    }
+    process.env.TRAVEL_PLUGIN_SECRETS = JSON.stringify(secrets)
+    runtime.diagnostics.append('Travel secrets: issued for ' + Object.keys(secrets as object).length + ' plugin(s)', 'info')
+  } catch (error) {
+    runtime.diagnostics.append('Travel secrets: failed (' + String(error) + ')', 'warn')
+  }
+}
+function travelActiveProfileName(): string {
+  try {
+    const state = JSON.parse(readFileSync(join(home, 'desktop-next.json'), 'utf8')) as { active?: unknown }
+    if (typeof state.active === 'string' && /^[A-Za-z0-9._-]{1,64}$/.test(state.active)) return state.active
+  } catch { /* fall through */ }
+  return 'tb-profile'
+}
 function travelReadEnvGrants(body: Record<string, unknown> | null): void {
   const grants = body?.env_grants
   const out: Record<string, string> = {}
@@ -181,6 +215,10 @@ function travelReadEnvGrants(body: Record<string, unknown> | null): void {
 }
 const TRAVEL_AUTH_BASE = 'https://work.tipsmuseum.com'
 const TRAVEL_SESSION_FILE = join(home, '.travel-session.json')
+/** Authorization payload of the last successful verify/login, mirrored to disk so a
+ *  cold start that cannot reach the backend still composes the entitled plugins. */
+const TRAVEL_GRANTS_FILE = join(home, '.travel-grants.json')
+let travelSessionSnapshot: Record<string, unknown> | undefined
 type TravelSession = { token: string; user: string }
 async function travelRequest(path: string, init: RequestInit): Promise<{ status: number; body: Record<string, unknown> | null }> {
   const response = await fetch(`${TRAVEL_AUTH_BASE}${path}`, { ...init, signal: AbortSignal.timeout(10_000) })
@@ -190,6 +228,7 @@ async function travelRequest(path: string, init: RequestInit): Promise<{ status:
 }
 /** Boot-time check of a stored session token; fail-closed (unreachable server keeps the gate shut). */
 async function travelVerifyStoredSession(): Promise<void> {
+  travelLoadSessionSnapshot()
   let stored: TravelSession | undefined
   try { stored = JSON.parse(readFileSync(TRAVEL_SESSION_FILE, 'utf8')) } catch { return }
   if (!stored || typeof stored.token !== 'string') return
@@ -202,6 +241,8 @@ async function travelVerifyStoredSession(): Promise<void> {
       process.env.TRAVEL_TOKEN = stored.token
       travelReadEnvGrants(body)
       travelApplyRoleEnv()
+      travelRememberSession(body)
+      await travelApplyCapabilityBrief(body)
       // W16 trace: proves env grants were applied to this shell before Host composition.
       runtime.diagnostics.append(`Travel auth: stored session restored (env grants: ${Object.keys(travelEnvGrants).length})`, 'info')
     }
@@ -227,6 +268,8 @@ async function travelPerformLogin(username: string, password: string): Promise<v
   process.env.TRAVEL_TOKEN = result.body.token
   travelReadEnvGrants(result.body)
   travelApplyRoleEnv()
+  travelRememberSession(result.body)
+  await travelApplyCapabilityBrief(result.body)
   try { writeFileSync(TRAVEL_SESSION_FILE, JSON.stringify({ token: result.body.token, user: loginUsername }, undefined, 2)) } catch { /* best effort */ }
   runtime.diagnostics.append(`Travel auth: user ${username} signed in`, 'info')
 }
@@ -235,7 +278,101 @@ async function travelPerformLogin(username: string, password: string): Promise<v
  * entitlements (per-user plugin visibility) against the cloud themselves.
  */
 function travelMainUrl(): string {
-  return travelToken ? `${APP_URL}?travel_token=${encodeURIComponent(travelToken)}` : APP_URL
+  if (!travelToken) return APP_URL
+  const base = `${APP_URL}?travel_token=${encodeURIComponent(travelToken)}`
+  // A passwordless cold start can outrun the network (proxies drop TLS mid-flight).
+  // Hand the renderer the last known good authorization snapshot so plugins compose
+  // instead of leaving the user on the bare host page; a later verify refreshes it.
+  if (travelSessionSnapshot === undefined) return base
+  try {
+    return `${base}&travel_session=${encodeURIComponent(JSON.stringify(travelSessionSnapshot))}`
+  } catch {
+    return base
+  }
+}
+/** Last authorization payload from a successful verify/login, kept on disk so a failed
+ *  cold-start verify still composes every plugin the account is entitled to. */
+function travelRememberSession(body: Record<string, unknown> | null): void {
+  if (body === null || body.ok !== true) return
+  travelSessionSnapshot = body
+  try { writeFileSync(TRAVEL_GRANTS_FILE, JSON.stringify(body), 'utf8') } catch { /* best effort */ }
+}
+function travelLoadSessionSnapshot(): void {
+  try {
+    const parsed = JSON.parse(readFileSync(TRAVEL_GRANTS_FILE, 'utf8')) as Record<string, unknown>
+    if (parsed !== null && typeof parsed === 'object' && parsed.ok === true) travelSessionSnapshot = parsed
+  } catch { /* no snapshot yet */ }
+}
+/** T22: what the account may use, stated in the session prompt itself.
+ *
+ *  The app center is the only installation surface: the agent has no plugin_manager
+ *  tool any more, and it cannot grant itself an entitlement. That leaves a hole when a
+ *  user asks for a capability whose plugin is missing — with nothing telling it why, the
+ *  model improvises (reads the profile, unpacks builtin tgz files, edits package.json,
+ *  greps the reports of a previous run for evidence the tool "exists").
+ *  This brief closes the hole: it names the plugins this account owns, says for each why
+ *  it is unavailable, and states the one allowed next step (send the user to the app
+ *  center). The shell only records the facts here — grants, catalog, profile location —
+ *  because the plugin renders the text and re-renders it on every prompt assembly, so a
+ *  plugin deleted in the app center disappears from the brief on the next turn. Keeping
+ *  the payload on disk (instead of an environment string frozen at login) is what makes
+ *  that possible; the path travels through the environment so plugin releases stay free
+ *  of cloud URLs. */
+const TRAVEL_CAPABILITY_STATE_FILE = join(home, '.travel-capability.json')
+process.env.TRAVEL_CAPABILITY_STATE = TRAVEL_CAPABILITY_STATE_FILE
+type TravelCatalogItem = { name: string; displayName?: string; summary?: string; latestVersion?: string }
+let travelCatalogCache: TravelCatalogItem[] | undefined
+/** Market catalog for the brief. Cached: it changes on release cadence, not per session. */
+async function travelFetchCatalog(): Promise<TravelCatalogItem[]> {
+  if (travelCatalogCache !== undefined) return travelCatalogCache
+  try {
+    const provider = await fetch(`${TRAVEL_AUTH_BASE}/manifest.json`, { signal: AbortSignal.timeout(4000) })
+    const descriptor = await provider.json() as { transport?: { endpoint?: unknown } }
+    const endpoint = descriptor.transport?.endpoint
+    if (typeof endpoint !== 'string' || !endpoint.startsWith('https://')) return []
+    const response = await fetch(endpoint, { signal: AbortSignal.timeout(4000) })
+    const body = await response.json() as { items?: unknown }
+    if (!Array.isArray(body.items)) return []
+    const items: TravelCatalogItem[] = []
+    for (const raw of body.items) {
+      if (raw === null || typeof raw !== 'object') continue
+      const item = raw as Record<string, unknown>
+      const name = typeof item.name === 'string' ? item.name : typeof item.id === 'string' ? item.id : undefined
+      if (name === undefined || !/^[A-Za-z0-9._-]{1,80}$/.test(name)) continue
+      items.push({
+        name,
+        ...(typeof item.displayName === 'string' ? { displayName: item.displayName } : {}),
+        ...(typeof item.summary === 'string' ? { summary: item.summary } : {}),
+        ...(typeof item.latestVersion === 'string' ? { latestVersion: item.latestVersion } : {})
+      })
+    }
+    travelCatalogCache = items
+    return items
+  } catch { return [] }
+}
+function travelComposeCapabilityState(body: Record<string, unknown>, catalog: TravelCatalogItem[]): Record<string, unknown> {
+  const list = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+  return {
+    ok: true,
+    updatedAt: new Date().toISOString(),
+    user: body.user ?? null,
+    profileDir: join(home, 'profiles', travelActiveProfileName()),
+    plugins: list(body.plugins),
+    disabled: list(body.disabled),
+    loaded: list(body.loaded),
+    catalog
+  }
+}
+async function travelApplyCapabilityBrief(body: Record<string, unknown> | null): Promise<void> {
+  if (body === null || body.ok !== true) return
+  try {
+    const catalog = await travelFetchCatalog()
+    const state = travelComposeCapabilityState(body, catalog)
+    writeFileSync(TRAVEL_CAPABILITY_STATE_FILE, JSON.stringify(state, undefined, 2), 'utf8')
+    runtime.diagnostics.append(`Travel prompt: capability state refreshed (${catalog.length} catalog item(s))`, 'info')
+  } catch (error) {
+    runtime.diagnostics.append(`Travel prompt: brief skipped (${error instanceof Error ? error.message : String(error)})`, 'warn')
+  }
 }
 /** The gated startup chain: recovery > login > onboarding > start. */
 /**
@@ -419,7 +556,7 @@ function travelStartupChain(): void {
   if (!travelHostStarted) {
     travelHostStarted = true
     travelEnsureReleaseGates()
-    void builtinPluginsReady().then(() => { runtime.start().catch(() => {}) })
+    void travelApplyPluginSecrets(travelToken).catch(() => {}).then(() => builtinPluginsReady()).then(() => { runtime.start().catch(() => {}) })
   }
   openMain()
 }
@@ -1056,7 +1193,7 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
       shellWindow?.hide()
       if (!travelHostStarted) {
         travelHostStarted = true
-        void builtinPluginsReady().then(() => { runtime.start().catch(() => {}) })
+        void travelApplyPluginSecrets(travelToken).catch(() => {}).then(() => builtinPluginsReady()).then(() => { runtime.start().catch(() => {}) })
       }
       else {
         // The host composed under the previous session's grants env (TRAVEL_ENABLE_*
@@ -1078,6 +1215,7 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     travelLoggedIn = false
     travelToken = undefined
     delete process.env.TRAVEL_TOKEN
+    try { rmSync(TRAVEL_CAPABILITY_STATE_FILE, { force: true }) } catch { /* best-effort: the brief goes quiet */ }
     travelEnvGrants = {}
     travelApplyRoleEnv()
     runtime.diagnostics.append('Travel auth: user signed out', 'info')
@@ -1085,6 +1223,24 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
     // session existed before, so the role env is always re-composed on entry.
     mainWindow?.hide()
     openControls('login')
+    return
+  }
+  if (type === 'travel-refresh-grants') {
+    // The app center changed what this account may use (installed, deleted, or the admin
+    // changed the role). Re-verify so the capability brief the Host renders names the new
+    // truth on the next turn, without a restart: the section body is a provider that reads
+    // the state file on every assembly.
+    await travelVerifyStoredSession()
+    return
+  }
+  if (type === 'travel-relaunch') {
+    // App center: an installed plugin is granted but this Host was composed before the
+    // grant, so its gate is still shut. The click itself is the confirmation; go through
+    // the normal quit path (not app.exit) so the Host shuts down and the next launch
+    // recomposes the Profile with the current grants.
+    relaunch = relaunchArguments(process.argv.slice(1), false, false)
+    runtime.diagnostics.append('Travel: relaunch requested from the app center', 'info')
+    app.quit()
     return
   }
   if (type === 'quit') { app.quit(); return }
