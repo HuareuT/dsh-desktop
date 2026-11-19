@@ -3,7 +3,6 @@ import { useId, useState } from 'react'
 import { Button } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/button.tsx'
 import { Input } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/input.tsx'
 import { Label } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/label.tsx'
-import { Alert, AlertDescription } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/alert.tsx'
 import { DesktopFrame } from '../../../dsh-plugin-desktop/src/native-ui/shared/DesktopFrame.tsx'
 import type { DesktopBridge } from '../desktop-contract.ts'
 
@@ -27,6 +26,14 @@ function EyeGlyph({ open }: { open: boolean }): JSX.Element {
         <path d="M3 12c0-2.7 4-7 9-7s9 4.3 9 7-4 7-9 7-9-4.3-9-7Z" />
         <circle cx="12" cy="12" r="2.6" />
       </svg>
+}
+
+function WarnGlyph(): JSX.Element {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3.6 2.9 19.4a1 1 0 0 0 .9 1.5h16.4a1 1 0 0 0 .9-1.5L12 3.6Z" />
+    <path d="M12 9.4v4.2" />
+    <path d="M12 17.1h.01" />
+  </svg>
 }
 
 /**
@@ -68,7 +75,7 @@ export function TravelLogin({ bridge, locale }: { bridge: Pick<DesktopBridge, 'c
     <DesktopFrame />
     <main className="tbLogin dshNativeContent">
       <form className="tbLoginCard" onSubmit={submit}>
-        <div className="tbLoginBrand">
+        <div className="tbLoginHead">
           <span className="tbLoginMark"><PinGlyph /></span>
           <h1 className="tbLoginTitle">Travel Buddy</h1>
         </div>
@@ -87,8 +94,10 @@ export function TravelLogin({ bridge, locale }: { bridge: Pick<DesktopBridge, 'c
             </div>
           </div>
         </div>
-        {failure ? <Alert variant="destructive" className="tbLoginAlert"><AlertDescription>{failure}</AlertDescription></Alert> : undefined}
-        <Button type="submit" size="lg" className="tbLoginSubmit" disabled={busy || !ready}>{busy ? t('正在登录…', 'Signing in…') : t('登录', 'Sign in')}</Button>
+        {failure ? <div className="tbLoginAlert" role="alert"><WarnGlyph /><span>{failure}</span></div> : undefined}
+        <Button type="submit" size="lg" className="tbLoginSubmit" data-busy={busy ? 'true' : 'false'} disabled={busy || !ready}>
+          {busy ? <><span className="tbLoginSpinner" aria-hidden="true" />{t('正在登录…', 'Signing in…')}</> : t('登录', 'Sign in')}
+        </Button>
       </form>
     </main>
   </>

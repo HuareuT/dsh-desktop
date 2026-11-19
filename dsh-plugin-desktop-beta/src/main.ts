@@ -957,7 +957,7 @@ function openControls(page: 'general' | 'profiles' | 'create-profile' | 'tools' 
     const creating = page === 'create-profile' || page === 'login'
     window.setResizable(!creating)
     window.setMinimumSize(creating ? 420 : 680, creating ? 330 : 560)
-    window.setSize(creating ? 480 : page === 'onboarding' ? 1040 : 850, creating ? (page === 'login' ? 440 : 360) : page === 'onboarding' ? 720 : 800)
+    window.setSize(creating ? 480 : page === 'onboarding' ? 1040 : 850, creating ? (page === 'login' ? 500 : 360) : page === 'onboarding' ? 720 : 800)
     if (process.platform === 'darwin') window.setWindowButtonPosition?.({ x: 16, y: page === 'onboarding' ? 18 : 12 })
     applyWindowMaterial(window, runtime.preferences)
   }
