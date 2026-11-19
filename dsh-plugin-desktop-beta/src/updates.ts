@@ -9,7 +9,7 @@ import { withUpdateArch, type UpdateArch } from './update-arch.ts'
 import type { NextUpdateState } from './update-state.ts'
 
 /** Release stream a build belongs to, read off its own version instead of being hard-coded:
- *  `2.0.22-beta.4` ships on beta, `2.0.23-next` on next, and `2.0.22` on stable. */
+ *  `1.0.0-beta.4` ships on beta, `1.1.0-next` on next, and `1.0.0` on stable. */
 export function releaseChannelOf(version: string): 'stable' | 'beta' | 'next' {
   const match = /^\d+\.\d+\.\d+-(beta|next)(?:\.\d+)?$/.exec(version.trim())
   if (match === null) return 'stable'
