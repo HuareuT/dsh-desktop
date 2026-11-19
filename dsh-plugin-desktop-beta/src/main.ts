@@ -320,6 +320,10 @@ function travelLoadSessionSnapshot(): void {
  *  of cloud URLs. */
 const TRAVEL_CAPABILITY_STATE_FILE = join(home, '.travel-capability.json')
 process.env.TRAVEL_CAPABILITY_STATE = TRAVEL_CAPABILITY_STATE_FILE
+/** Travel: the first-use Workspace folder under the user home. An unpackaged run keeps its own
+ *  folder so development never writes into the released product's Workspace; the Host reads
+ *  this before it creates a Workspace, hence the environment hand-off. */
+process.env.TRAVEL_WORKSPACE_FOLDER = app.isPackaged ? 'Travel Buddy' : 'Travel Buddy Dev'
 type TravelCatalogItem = { name: string; displayName?: string; summary?: string; latestVersion?: string }
 let travelCatalogCache: TravelCatalogItem[] | undefined
 /** Market catalog for the brief. Cached: it changes on release cadence, not per session. */
@@ -688,6 +692,7 @@ const runtime = new NextDesktopRuntime({
   },
 })
 if (ownsInstance) runtime.diagnostics.crashDumps = crashDumps
+runtime.diagnostics.append(`Travel: default Workspace folder ${process.env.TRAVEL_WORKSPACE_FOLDER}`, 'info')
 const platformLogin = new PlatformLoginWindow({
   BrowserWindow, session: partition => session.fromPartition(partition), host: () => runtime.auth,
   parent: () => mainWindow, title: () => t('登录 DeepSeek', 'Sign in to DeepSeek'), dark: () => nativeTheme.shouldUseDarkColors,
