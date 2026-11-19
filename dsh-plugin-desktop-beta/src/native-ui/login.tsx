@@ -29,6 +29,19 @@ function EyeGlyph({ open }: { open: boolean }): JSX.Element {
       </svg>
 }
 
+/**
+ * Electron rejects a renderer→main call as "Error invoking remote method '<channel>': Error: <message>".
+ * The user only needs <message> (already localized in the main process), so drop the transport wrapper.
+ */
+function readFailure(error: unknown, fallback: string): string {
+  const raw = error instanceof Error ? error.message : String(error)
+  const message = raw
+    .replace(/^Error invoking remote method '[^']*':\s*/i, '')
+    .replace(/^(?:Error|Uncaught Error):\s*/i, '')
+    .trim()
+  return message === '' ? fallback : message
+}
+
 export function TravelLogin({ bridge, locale }: { bridge: Pick<DesktopBridge, 'command'>; locale: 'zh' | 'en' }) {
   const t = (zh: string, en: string) => locale === 'zh' ? zh : en
   const userField = useId()
@@ -47,7 +60,7 @@ export function TravelLogin({ bridge, locale }: { bridge: Pick<DesktopBridge, 'c
       // The main process performs the network call; the renderer only relays credentials over IPC.
       await bridge.command({ type: 'travel-login', username, password })
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : String(error))
+      setFailure(readFailure(error, t('登录失败，请稍后重试。', 'Sign-in failed. Try again in a moment.')))
       setBusy(false)
     }
   }
