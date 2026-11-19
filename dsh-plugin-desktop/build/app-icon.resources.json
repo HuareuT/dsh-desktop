@@ -13,9 +13,13 @@
     "size": 1024
   },
   "outputs": {
-    "app-icon.png": "29962debae12b692b79920544626067be4045791471cfb663cd2956dd90b94fa",
-    "app-icon-mac.png": "94aae8e5f913a91789e43d479aa412c1b7bfb094d403dd5fc9302a6e78ad54e2",
+    "app-icon.png": "fae1f31d3c16c1b50c91e6281be30314501f1c59f8b097385a53a8198a7d0045",
+    "app-icon-mac.png": "88d551a7b847e2a5c3c0467e9ee590d650d3d41b41bbfdf4835736e1e8e30e4e",
     "app-icon.ico": "71e701a471062cb626c440a22a5bc928ecdc05fa600c7ef5d81e42ebc122a2a0",
     "app-icon.icns": "0117b0e7b37872a5d29fc9d310a2a014e981c288af24320e231c16775d095fe7"
+  },
+  "artwork": {
+    "vector": "app-icon.svg",
+    "generator": "scripts/generate-brand-icons.mjs"
   }
 }

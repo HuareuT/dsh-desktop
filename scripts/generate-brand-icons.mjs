@@ -7,6 +7,7 @@
  * the single source of truth for the product mark, and everything else is derived here.
  */
 import { createHash } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
@@ -112,13 +113,17 @@ function renderSquare(sharp, vector, size, sharpenSigma) {
 
 /** Render the canonical app icon, the macOS safe-area variant and the Windows ICO. */
 async function writeAppIcons(sharp, build, vector) {
+  // Icon Composer artwork is 16-bit RGB; keep the bundle PNGs in the same depth so the
+  // macOS projection test (and Finder) sees the depth the .icon document declares.
   const png = await renderSquare(sharp, vector, APP_ICON_CANVAS)
+    .toColourspace('rgb16')
     .png({ compressionLevel: 9, progressive: false, adaptiveFiltering: false, palette: false })
     .toBuffer()
   await writeFile(join(build, 'app-icon.png'), png)
 
   const mac = await renderSquare(sharp, vector, MAC_ARTWORK)
     .extend({ top: MAC_INSET, bottom: MAC_INSET, left: MAC_INSET, right: MAC_INSET, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toColourspace('rgb16')
     .png({ compressionLevel: 9, progressive: false, adaptiveFiltering: false, palette: false })
     .toBuffer()
   await writeFile(join(build, 'app-icon-mac.png'), mac)
@@ -219,7 +224,32 @@ async function writeTrayIcons(sharp, build, tray, vector, template) {
   }
 }
 
-/** Keep `app-icon.resources.json` output hashes in step with the files just written. */
+/**
+ * Digest an Icon Composer document exactly like `icons:check` does, so the resource record
+ * keeps a truthful `sourceSha256` even though the rasters now come from the SVG.
+ */
+async function compositionDigest(directory) {
+  const digest = createHash('sha256')
+  const visit = async (relative) => {
+    const entries = await readdir(join(directory, relative), { withFileTypes: true })
+    entries.sort((a, b) => a.name.localeCompare(b.name, 'en'))
+    for (const entry of entries) {
+      if (entry.name.startsWith('.')) continue
+      const path = relative === '' ? entry.name : `${relative}/${entry.name}`
+      if (entry.isDirectory()) await visit(path)
+      else if (entry.isFile()) digest.update(path).update('\0').update(await readFile(join(directory, path))).update('\0')
+    }
+  }
+  await visit('')
+  return digest.digest('hex')
+}
+
+/**
+ * Keep `app-icon.resources.json` in step with the files just written.
+ *
+ * `source` still points at the Icon Composer document that macOS packaging compiles, so the
+ * record also names the vector the rasters were rendered from.
+ */
 async function refreshResourceRecord(build) {
   const path = join(build, 'app-icon.resources.json')
   const record = JSON.parse(await readFile(path, 'utf8'))
@@ -227,7 +257,10 @@ async function refreshResourceRecord(build) {
   for (const name of Object.keys(record.outputs ?? {})) {
     outputs[name] = createHash('sha256').update(await readFile(join(build, name))).digest('hex')
   }
-  await writeFile(path, `${JSON.stringify({ ...record, outputs }, null, 2)}\n`)
+  const composition = join(build, 'app-icon.icon')
+  const sourceSha256 = existsSync(composition) ? await compositionDigest(composition) : record.sourceSha256
+  const artwork = { vector: 'app-icon.svg', generator: 'scripts/generate-brand-icons.mjs' }
+  await writeFile(path, `${JSON.stringify({ ...record, sourceSha256, artwork, outputs }, null, 2)}\n`)
 }
 
 /**
