@@ -63,17 +63,13 @@ body:has(.tbLogin) .dshNativeFrame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   flex: none;
-  border-radius: 15px;
-  color: #fff;
-  background: linear-gradient(145deg, #3b82f6, #0ea5e9);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 30%),
-    0 12px 22px -12px rgb(37 99 235 / 70%);
+  /* The mark carries its own tile, gradient and shadow, so the wrapper only positions it. */
+  filter: drop-shadow(0 12px 20px rgb(37 99 235 / 35%));
 }
-.tbLoginMark svg { width: 26px; height: 26px; }
+.tbLoginMark svg { width: 52px; height: 52px; display: block; }
 
 .tbLoginTitle {
   margin: 0;

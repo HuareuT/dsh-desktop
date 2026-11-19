@@ -5,13 +5,11 @@ import { Input } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/i
 import { Label } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/label.tsx'
 import { DesktopFrame } from '../../../dsh-plugin-desktop/src/native-ui/shared/DesktopFrame.tsx'
 import type { DesktopBridge } from '../desktop-contract.ts'
+import { BrandIcon } from './brand-icon.tsx'
 
-/** Same location-pin silhouette as the sidebar brand mark, so the gate reads as the same product. */
+/** The shipped product icon, so the gate, the sidebar and the app tile read as one product. */
 function PinGlyph(): JSX.Element {
-  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 1.8C7.9 1.8 4.6 5.1 4.6 9.2c0 5.6 7.4 13 7.4 13s7.4-7.4 7.4-13c0-4.1-3.3-7.4-7.4-7.4z" fill="currentColor" />
-    <circle cx="12" cy="9.2" r="2.8" fill="#fff" />
-  </svg>
+  return <BrandIcon size={52} />
 }
 
 function EyeGlyph({ open }: { open: boolean }): JSX.Element {

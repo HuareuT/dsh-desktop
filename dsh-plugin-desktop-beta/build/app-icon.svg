@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Travel Buddy</title>
+  <desc id="desc">Rounded-square app icon: a white speech bubble carrying a blue paper plane, with an AI sparkle, over a sky-to-sea gradient.</desc>
+
+  <defs>
+    <linearGradient id="tb-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2F68F6"/>
+      <stop offset="0.52" stop-color="#1E9FE8"/>
+      <stop offset="1" stop-color="#2ECBA6"/>
+    </linearGradient>
+    <radialGradient id="tb-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tb-plane-top" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#63A6FF"/>
+      <stop offset="1" stop-color="#2C74F2"/>
+    </linearGradient>
+    <linearGradient id="tb-plane-bottom" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1B58D8"/>
+      <stop offset="1" stop-color="#123BA8"/>
+    </linearGradient>
+    <clipPath id="tb-round"><rect width="512" height="512" rx="116" ry="116"/></clipPath>
+    <filter id="tb-shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#0B3D9E" flood-opacity="0.26"/>
+    </filter>
+  </defs>
+
+  <g clip-path="url(#tb-round)">
+    <!-- base -->
+    <rect width="512" height="512" rx="116" ry="116" fill="url(#tb-bg)"/>
+    <circle cx="420" cy="66" r="270" fill="url(#tb-glow)"/>
+
+    <!-- horizon / distant hills -->
+    <path d="M-40 470 Q 256 372 552 470 L 552 552 L -40 552 Z" fill="#FFFFFF" opacity="0.10"/>
+    <path d="M-40 506 Q 256 424 552 506 L 552 552 L -40 552 Z" fill="#0B48B8" opacity="0.13"/>
+
+    <!-- AI sparkle -->
+    <path d="M438 48 C441 70 446 75 468 78 C446 81 441 86 438 108 C435 86 430 81 408 78 C430 75 435 70 438 48 Z" fill="#FFFFFF" opacity="0.96"/>
+
+    <!-- speech bubble = the buddy -->
+    <g filter="url(#tb-shadow)">
+      <path d="M168 330 C170 374 152 402 122 422 C111 429 102 417 112 405 L154 346 Z" fill="#FFFFFF"/>
+      <rect x="96" y="118" width="320" height="236" rx="78" ry="78" fill="#FFFFFF"/>
+    </g>
+
+    <!-- paper plane = travel, split into two folded wings -->
+    <g transform="translate(256 236) scale(0.88) translate(-256 -236)">
+      <path d="M358 160 L150 236 L193 277 Z" fill="url(#tb-plane-top)"/>
+      <path d="M358 160 L193 277 L236 318 Z" fill="url(#tb-plane-bottom)"/>
+      <path d="M358 160 L193 277" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
+    </g>
+  </g>
+</svg>
