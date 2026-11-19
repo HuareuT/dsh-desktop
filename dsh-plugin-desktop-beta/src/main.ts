@@ -553,14 +553,20 @@ function travelEnsureReleaseGates(): void {
   }
 }
 
-function travelStartupChain(): void {
+async function travelStartupChain(): Promise<void> {
   if (runtime.recoveryMode) { openControls('recovery'); return }
   if (!travelLoggedIn) { openControls('login'); return }
   if (onboarding) { openControls('onboarding'); return }
   if (!travelHostStarted) {
     travelHostStarted = true
     travelEnsureReleaseGates()
-    void travelApplyPluginSecrets(travelToken).catch(() => {}).then(() => builtinPluginsReady()).then(() => { runtime.start().catch(() => {}) })
+    // Wait for the Host before the window: a first run installs the built-in plugins first,
+    // and a shell that boots against a Host still on its way lands on the recovery screen.
+    try {
+      await travelApplyPluginSecrets(travelToken).catch(() => {})
+      await builtinPluginsReady()
+      await runtime.start()
+    } catch (error) { runtime.diagnostics.append(String(error), 'error') }
   }
   openMain()
 }
@@ -1198,7 +1204,17 @@ async function performCommand(input: Record<string, unknown>, type: string, sour
       shellWindow?.hide()
       if (!travelHostStarted) {
         travelHostStarted = true
-        void travelApplyPluginSecrets(travelToken).catch(() => {}).then(() => builtinPluginsReady()).then(() => { runtime.start().catch(() => {}) })
+        // The first sign-in is the moment the Host starts, and it installs the built-in
+        // plugins first: opening the window before that leaves the shell booting against a
+        // Host that answers "Next Host is unavailable", and the renderer's short retry
+        // budget runs out before the Host is up. Wait for it instead.
+        runtime.busy = true; native.refresh()
+        try {
+          await travelApplyPluginSecrets(travelToken).catch(() => {})
+          await builtinPluginsReady()
+          await runtime.start()
+        } catch (error) { runtime.diagnostics.append(String(error), 'error') }
+        finally { runtime.busy = false; native.refresh() }
       }
       else {
         // The host composed under the previous session's grants env (TRAVEL_ENABLE_*

@@ -28,7 +28,13 @@ export const OFFICIAL_MARKET_PACKAGE = '@deepseek-ai/dsh-experimental-plugin-mar
 /** Legacy shell shape, now projected from the standard Profile bundle selection. */
 export interface Features { remoteControl: boolean; market: boolean; dshMarket?: boolean; officialMarket?: boolean }
 export interface OnboardingChoices { features: Features; computerUse: boolean }
-export const DEFAULT_FEATURES: Readonly<Features> = { remoteControl: false, market: false }
+/**
+ * `market` is on by default: the Travel Buddy app center is the only way to install a
+ * plugin, and it is served by `dsh-community-market`. A profile composed without that
+ * bundle answers every `/api/community-market/*` read with 404, so the app center shows
+ * "插件目录暂时不可用" on a fresh installation and nothing can be installed at all.
+ */
+export const DEFAULT_FEATURES: Readonly<Features> = { remoteControl: false, market: true }
 
 interface ProfileManifest {
   dsh: {
