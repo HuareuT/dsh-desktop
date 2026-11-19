@@ -1,5 +1,5 @@
-/** T8 PoC: login gate page rendered before the Host ever starts. */
-import { useState } from 'react'
+/** Sign-in gate rendered before the Host ever starts. */
+import { useId, useState } from 'react'
 import { Button } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/button.tsx'
 import { Input } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/input.tsx'
 import { Label } from '../../../dsh-plugin-desktop/src/native-ui/components/ui/label.tsx'
@@ -7,15 +7,41 @@ import { Alert, AlertDescription } from '../../../dsh-plugin-desktop/src/native-
 import { DesktopFrame } from '../../../dsh-plugin-desktop/src/native-ui/shared/DesktopFrame.tsx'
 import type { DesktopBridge } from '../desktop-contract.ts'
 
+/** Same location-pin silhouette as the sidebar brand mark, so the gate reads as the same product. */
+function PinGlyph(): JSX.Element {
+  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 1.8C7.9 1.8 4.6 5.1 4.6 9.2c0 5.6 7.4 13 7.4 13s7.4-7.4 7.4-13c0-4.1-3.3-7.4-7.4-7.4z" fill="currentColor" />
+    <circle cx="12" cy="9.2" r="2.8" fill="#fff" />
+  </svg>
+}
+
+function EyeGlyph({ open }: { open: boolean }): JSX.Element {
+  return open
+    ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M10.7 5.1A9.9 9.9 0 0 1 12 5c5 0 9 4.3 9 7 0 1-1 2.4-2.6 3.7" />
+        <path d="M6.6 6.6C4.2 8.2 3 10.3 3 12c0 2.7 4 7 9 7 2 0 3.8-.7 5.3-1.8" />
+        <path d="M3 3l18 18" />
+        <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+      </svg>
+    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 12c0-2.7 4-7 9-7s9 4.3 9 7-4 7-9 7-9-4.3-9-7Z" />
+        <circle cx="12" cy="12" r="2.6" />
+      </svg>
+}
+
 export function TravelLogin({ bridge, locale }: { bridge: Pick<DesktopBridge, 'command'>; locale: 'zh' | 'en' }) {
   const t = (zh: string, en: string) => locale === 'zh' ? zh : en
+  const userField = useId()
+  const passField = useId()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [revealed, setRevealed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState('')
+  const ready = username.trim() !== '' && password !== ''
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (busy) return
+    if (busy || !ready) return
     setFailure(''); setBusy(true)
     try {
       // The main process performs the network call; the renderer only relays credentials over IPC.
@@ -27,23 +53,29 @@ export function TravelLogin({ bridge, locale }: { bridge: Pick<DesktopBridge, 'c
   }
   return <>
     <DesktopFrame />
-    <main className="dshNativeContent p-6" style={{ minHeight: '100vh', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <form onSubmit={submit} style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{t('登录 Travel Buddy', 'Sign in to Travel Buddy')}</h1>
-          <p style={{ fontSize: 13, opacity: 0.7, margin: 0 }}>{t('登录后才能使用本产品。', 'Sign in to continue to this product.')}</p>
+    <main className="tbLogin dshNativeContent">
+      <form className="tbLoginCard" onSubmit={submit}>
+        <div className="tbLoginBrand">
+          <span className="tbLoginMark"><PinGlyph /></span>
+          <h1 className="tbLoginTitle">Travel Buddy</h1>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Label htmlFor="travel-user">{t('用户名', 'Username')}</Label>
-          <Input id="travel-user" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} disabled={busy} />
+        <div className="tbLoginFields">
+          <div className="tbLoginField">
+            <Label htmlFor={userField}>{t('用户名', 'Username')}</Label>
+            <Input id={userField} autoFocus autoComplete="username" spellCheck={false} value={username} onChange={event => setUsername(event.target.value)} disabled={busy} />
+          </div>
+          <div className="tbLoginField">
+            <Label htmlFor={passField}>{t('密码', 'Password')}</Label>
+            <div className="tbLoginSecret">
+              <Input id={passField} type={revealed ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} disabled={busy} />
+              <button type="button" className="tbLoginReveal" tabIndex={-1} disabled={busy}
+                aria-label={revealed ? t('隐藏密码', 'Hide password') : t('显示密码', 'Show password')}
+                onClick={() => setRevealed(value => !value)}><EyeGlyph open={revealed} /></button>
+            </div>
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Label htmlFor="travel-pass">{t('密码', 'Password')}</Label>
-          <Input id="travel-pass" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} disabled={busy} />
-        </div>
-        {failure ? <Alert variant="destructive"><AlertDescription>{failure}</AlertDescription></Alert> : undefined}
-        <Button type="submit" disabled={busy || !username || !password}>{busy ? t('正在登录…', 'Signing in…') : t('登录', 'Sign in')}</Button>
-        <p style={{ fontSize: 12, opacity: 0.55, margin: 0 }}>{t('演示账号 demo / travel2026（用户）· admin / travel2026（管理员）', 'Demo: demo / travel2026 (user) · admin / travel2026 (admin)')}</p>
+        {failure ? <Alert variant="destructive" className="tbLoginAlert"><AlertDescription>{failure}</AlertDescription></Alert> : undefined}
+        <Button type="submit" size="lg" className="tbLoginSubmit" disabled={busy || !ready}>{busy ? t('正在登录…', 'Signing in…') : t('登录', 'Sign in')}</Button>
       </form>
     </main>
   </>

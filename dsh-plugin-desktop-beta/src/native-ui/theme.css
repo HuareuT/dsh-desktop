@@ -1,7 +1,9 @@
 @import '../../../dsh-plugin-desktop/src/native-ui/shared/theme.css';
 @import './onboarding.css';
+@import './login.css';
 @source '../../../dsh-plugin-desktop/src/native-ui';
 @source './onboarding.tsx';
+@source './login.tsx';
 /* Map the official Settings tokens onto the existing native-window theme. */
 :root {
   --ds-ease-in-out: cubic-bezier(.4, 0, .2, 1);

@@ -1,0 +1,95 @@
+/* Sign-in gate: a single centered card on a soft brand wash. */
+
+.tbLogin {
+  box-sizing: border-box;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    radial-gradient(125% 105% at 4% -8%, oklch(0.72 0.14 248 / 26%), transparent 60%),
+    radial-gradient(115% 100% at 98% 106%, oklch(0.78 0.11 226 / 21%), transparent 64%),
+    var(--background);
+}
+
+/* The custom frame is a sibling above the page, so reserve its height when present. */
+.dshNativeFrame ~ .tbLogin { padding-top: calc(36px + 20px); }
+
+.tbLoginCard {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 346px;
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  padding: 24px 22px 22px;
+  border: 1px solid color-mix(in oklch, var(--border) 74%, transparent);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 26px 64px -38px rgb(0 0 0 / 42%), 0 2px 8px -4px rgb(0 0 0 / 14%);
+}
+
+.tbLoginBrand { display: flex; align-items: center; gap: 10px; }
+
+.tbLoginMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 11px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 24%), 0 8px 18px -10px rgb(37 99 235 / 55%);
+}
+.tbLoginMark svg { width: 19px; height: 19px; }
+
+.tbLoginTitle {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1.2;
+}
+
+.tbLoginFields { display: flex; flex-direction: column; gap: 13px; }
+.tbLoginField { display: flex; flex-direction: column; gap: 6px; }
+.tbLoginField > label { font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+
+.tbLoginSecret { position: relative; }
+.tbLoginSecret > input { padding-right: 38px; }
+
+.tbLoginReveal {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background-color var(--ds-transition-duration-fast) var(--ds-ease-in-out), color var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+.tbLoginReveal:hover { background: var(--muted); color: var(--foreground); }
+.tbLoginReveal svg { width: 16px; height: 16px; }
+
+.tbLoginAlert { padding: 9px 12px; font-size: 12.5px; line-height: 1.5; }
+
+.tbLoginSubmit { width: 100%; height: 40px; margin-top: 3px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tbLoginCard { animation: tbLoginEnter 260ms var(--ds-ease-in-out) both; }
+  @keyframes tbLoginEnter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+}
