@@ -526,11 +526,15 @@ function travelEnsureReleaseGates(): void {
     const builtin = new Set(['tb-plugin-travel-account', 'tb-plugin-travel-store'])
     const deps = Object.keys(pkg.dependencies ?? {})
       .filter((name) => name.startsWith('tb-plugin-') && !builtin.has(name))
-    if (deps.length === 0) return
+    // No early return when deps is empty: a profile with every cloud plugin uninstalled
+    // still needs its stale gate lines pruned below.
     const patchFile = join(profileDir, 'cordis.patch.yml')
-    let text = existsSync(patchFile) ? readFileSync(patchFile, 'utf8') : ''
-    if (!text.endsWith('\n')) text += '\n'
-    let added = 0
+    const text = existsSync(patchFile) ? readFileSync(patchFile, 'utf8') : ''
+    const lines = text.split('\n')
+    if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+
+    // Desired gate for every installed plugin: id -> env variable.
+    const wanted = new Map<string, string>()
     for (const dep of deps) {
       const env = 'TRAVEL_ENABLE_' + dep.replace(/^tb-plugin-/, '').replace(/[^A-Za-z0-9]/g, '_').toUpperCase()
       let id = dep.replace(/^tb-plugin-/, '')
@@ -539,14 +543,36 @@ function travelEnsureReleaseGates(): void {
         const hit = readFileSync(own, 'utf8').match(/- id:\s*([A-Za-z0-9._-]+)/)
         if (hit !== null) id = hit[1]
       }
+      wanted.set(id, env)
+    }
+
+    // Drop gates whose plugin is gone. Without this an uninstalled plugin kept a stale
+    // `- id: x` line and the Host warned `patch: entry "x" not found` on every start.
+    // Only the exact two-line shape this function writes is touched.
+    const kept: string[] = []
+    let removed = 0
+    for (let index = 0; index < lines.length; index += 1) {
+      const header = /^- id:\s*([A-Za-z0-9._-]+)\s*$/.exec(lines[index])
+      const body = /^ {2}disabled: !!js "process\.env\.TRAVEL_ENABLE_[A-Z0-9_]+ !== '1'"$/
+      if (header !== null && index + 1 < lines.length && body.test(lines[index + 1]) && !wanted.has(header[1])) {
+        index += 1
+        removed += 1
+        continue
+      }
+      kept.push(lines[index])
+    }
+
+    let added = 0
+    for (const [id, env] of wanted) {
       const existing = new RegExp(`^- id:\\s*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm')
-      if (existing.test(text)) continue
-      text += `- id: ${id}\n  disabled: !!js "process.env.${env} !== '1'"\n`
+      if (existing.test(kept.join('\n'))) continue
+      kept.push(`- id: ${id}`, `  disabled: !!js "process.env.${env} !== '1'"`)
       added += 1
     }
-    if (added > 0) {
-      writeFileSync(patchFile, text, 'utf8')
-      runtime.diagnostics.append(`Travel gates: added ${added} release gate(s) to ${active}`, 'info')
+
+    if (added > 0 || removed > 0) {
+      writeFileSync(patchFile, kept.join('\n') + '\n', 'utf8')
+      runtime.diagnostics.append(`Travel gates: ${String(added)} added, ${String(removed)} removed in ${active}`, 'info')
     }
   } catch (error) {
     runtime.diagnostics.append(`Travel gates: skipped (${error instanceof Error ? error.message : String(error)})`, 'warn')
